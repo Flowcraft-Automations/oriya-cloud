@@ -19,6 +19,7 @@ import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CouponsRouteImport } from './routes/coupons'
+import { Route as CancellationPolicyRouteImport } from './routes/cancellation-policy'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
@@ -73,6 +74,11 @@ const CouponsRoute = CouponsRouteImport.update({
   path: '/coupons',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CancellationPolicyRoute = CancellationPolicyRouteImport.update({
+  id: '/cancellation-policy',
+  path: '/cancellation-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/calendar': typeof CalendarRoute
+  '/cancellation-policy': typeof CancellationPolicyRoute
   '/coupons': typeof CouponsRoute
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/calendar': typeof CalendarRoute
+  '/cancellation-policy': typeof CancellationPolicyRoute
   '/coupons': typeof CouponsRoute
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/calendar': typeof CalendarRoute
+  '/cancellation-policy': typeof CancellationPolicyRoute
   '/coupons': typeof CouponsRoute
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents'
     | '/calendar'
+    | '/cancellation-policy'
     | '/coupons'
     | '/customers'
     | '/expenses'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents'
     | '/calendar'
+    | '/cancellation-policy'
     | '/coupons'
     | '/customers'
     | '/expenses'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents'
     | '/calendar'
+    | '/cancellation-policy'
     | '/coupons'
     | '/customers'
     | '/expenses'
@@ -187,6 +199,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentsRoute: typeof AgentsRoute
   CalendarRoute: typeof CalendarRoute
+  CancellationPolicyRoute: typeof CancellationPolicyRoute
   CouponsRoute: typeof CouponsRoute
   CustomersRoute: typeof CustomersRoute
   ExpensesRoute: typeof ExpensesRoute
@@ -271,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CouponsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cancellation-policy': {
+      id: '/cancellation-policy'
+      path: '/cancellation-policy'
+      fullPath: '/cancellation-policy'
+      preLoaderRoute: typeof CancellationPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/calendar': {
       id: '/calendar'
       path: '/calendar'
@@ -299,6 +319,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentsRoute: AgentsRoute,
   CalendarRoute: CalendarRoute,
+  CancellationPolicyRoute: CancellationPolicyRoute,
   CouponsRoute: CouponsRoute,
   CustomersRoute: CustomersRoute,
   ExpensesRoute: ExpensesRoute,

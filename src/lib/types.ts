@@ -75,7 +75,7 @@ export type Reservation = {
   status: ReservationStatus;
   check_in: string;
   check_out: string;
-  nights: number;
+  nights: number | null;
   adults: number;
   children: number;
   total_amount: number;

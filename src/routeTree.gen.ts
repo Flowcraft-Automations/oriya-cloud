@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as ReservationsRouteImport } from './routes/reservations'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReservationsRoute = ReservationsRouteImport.update({
   id: '/reservations',
   path: '/reservations',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/leads': typeof LeadsRoute
   '/reservations': typeof ReservationsRoute
+  '/tasks': typeof TasksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/leads': typeof LeadsRoute
   '/reservations': typeof ReservationsRoute
+  '/tasks': typeof TasksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/leads': typeof LeadsRoute
   '/reservations': typeof ReservationsRoute
+  '/tasks': typeof TasksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/calendar' | '/leads' | '/reservations'
+  fullPaths: '/' | '/calendar' | '/leads' | '/reservations' | '/tasks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/calendar' | '/leads' | '/reservations'
-  id: '__root__' | '/' | '/calendar' | '/leads' | '/reservations'
+  to: '/' | '/calendar' | '/leads' | '/reservations' | '/tasks'
+  id: '__root__' | '/' | '/calendar' | '/leads' | '/reservations' | '/tasks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +76,18 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   LeadsRoute: typeof LeadsRoute
   ReservationsRoute: typeof ReservationsRoute
+  TasksRoute: typeof TasksRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reservations': {
       id: '/reservations'
       path: '/reservations'
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   LeadsRoute: LeadsRoute,
   ReservationsRoute: ReservationsRoute,
+  TasksRoute: TasksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,103 +1,66 @@
-# Oriya OS — Phase 1 Build Plan
+## Goal
 
-Building the foundation: design system, RTL app shell, dashboard, and multi-unit calendar. Modules (reservations, leads, customers, agents, properties, payments, expenses, marketing, tasks) come in subsequent phases per your guidance ("shell + dashboard + calendar first, then add modules screen-by-screen").
+Build a real Supabase-backed backend for every module in the app and remove all hardcoded mock data (`src/lib/mock/dashboard.ts`, `src/lib/mock/calendar.ts`). All screens will read from the database via authenticated TanStack server functions, scoped per user (owner).
 
-## Scope of this phase
+## Auth model
 
-1. **Design system foundation** — color tokens, typography, RTL setup
-2. **App shell** — right-side dark sidebar, top bar, page layout pattern
-3. **Dashboard** (`/`) — KPIs, charts, activity lists
-4. **Calendar** (`/calendar`) — multi-unit reservation grid
-5. **Route stubs** for the remaining nav items so navigation works (empty "coming soon" pages)
+- Add Supabase email/password auth (sign-in page at `/auth`, public route).
+- Move all authenticated app routes (dashboard, calendar, reservations, properties, leads, customers) under `src/routes/_authenticated/` behind the managed auth gate.
+- Every table scoped by `owner_id = auth.uid()` with strict RLS. No public reads.
 
-Data is mocked in TypeScript files for this phase. No Lovable Cloud / database yet — you asked whether to do schema next, so we'll tackle that as a follow-up once the UI is validated.
+## Database schema (single migration)
 
-## 1. Design system
+Tables (all with `id uuid pk`, `owner_id uuid`, `created_at`, `updated_at`, RLS + owner-only policies + GRANTs):
 
-**`src/styles.css`** — replace default tokens:
-- Load Heebo via `<link>` in `__root.tsx` head (Google Fonts, weights 400/500/600/700)
-- Convert the full token block from the spec (navy 900/800/700/500/100, gold 600/500/100, canvas, text, semantic, channel colors) to CSS variables in `:root`
-- Map to Tailwind via `@theme inline` (e.g. `--color-navy-900`, `--color-gold-600`, `--color-bg-subtle`)
-- Set `body { font-family: "Heebo", sans-serif; }` and `html { direction: rtl; }`
-- Utility class `.ltr-num` with `direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums` for phones/currency
-- Card shadow token, radius 12px default
+- **properties** — name, address, notes
+- **units** — property_id, name, capacity, base_price, notes
+- **rate_seasons** — property_id, name, start_date, end_date, nightly_rate, min_nights
+- **customers** — full_name, phone, email, id_number, tags (text[]), notes
+- **reservations** — unit_id, customer_id (nullable), guest_name (denorm), phone, channel (enum: booking/direct/tzimmerer/airbnb/vrbo/block), status (enum: pending/confirmed/checkin/checkout/cancelled), check_in date, check_out date, nights (generated), adults, children, total_amount, paid_amount, notes
+- **leads** — full_name, phone, email, source (enum: whatsapp/website/tzimmerer/instagram/referral/other), interest, stage (enum: new/contacted/quoted/booked/lost), property_id (nullable), notes
+- **marketing_campaigns** — name, channel, status, start_date, end_date, budget, notes (integrated with leads module)
 
-**`src/routes/__root.tsx`** — add `<html lang="he" dir="rtl">`, Heebo font link, update meta (title "Oriya OS · מערכת ניהול").
+Enums created via `CREATE TYPE`. Triggers: `updated_at` auto-update on every table. Index on `reservations(owner_id, check_in, check_out)` and `reservations(unit_id, check_in)`.
 
-## 2. App shell
+## Server functions (`src/lib/*.functions.ts`, all `.middleware([requireSupabaseAuth])`)
 
-**`src/components/shell/AppShell.tsx`** — grid layout: sidebar 240px on the right, top bar 64px, content area white with padding.
+- `properties.functions.ts`: list/create/update/delete properties, list units, create/update/delete unit, list/create/update/delete rate seasons
+- `reservations.functions.ts`: list (with date-range filter for calendar), create, update, delete, updateStatus; also `getDashboardStats` for KPIs (open convos placeholder=0, staying-now, arrivals/departures today, month occupancy %, month revenue, ADR, RevPAR), `getRevenueByMonth` (last 7 months), `getOccupancyTrend`, `getChannelMix`
+- `customers.functions.ts`: list/create/update/delete/get
+- `leads.functions.ts`: list/create/update/delete/updateStage; `listCampaigns`, campaign CRUD
 
-**`src/components/shell/Sidebar.tsx`** — fixed right, `--navy-900` bg:
-- Logo block "Oriya OS · מערכת ניהול"
-- 4 groups (תפעול / פורטפוליו / כספים / שיווק) with 11px uppercase-tracking labels in `--text-on-dark-muted`
-- Nav items: lucide icon + Hebrew label, active state = `--navy-800` pill + 3px `--gold-600` bar on the right edge (RTL start edge)
-- Footer: version tag + collapse toggle
-- Uses TanStack `Link` + `useRouterState` for active detection
+## Frontend wiring (delete mocks, use TanStack Query)
 
-**`src/components/shell/TopBar.tsx`** — white, bottom border:
-- RTL start (right): global search input with icon, `--bg-subtle` fill
-- LTR start (left): notification bell w/ dot, language switcher (עב/EN), user chip (navy avatar + name + "מנהל מערכת")
+- Delete `src/lib/mock/dashboard.ts` and `src/lib/mock/calendar.ts`. Keep `nav.ts`.
+- Dashboard (`_authenticated/index.tsx`): replace `kpis`, `revenueByMonth`, `occupancyTrend`, `channelMix`, `arrivalsToday`, `departuresToday`, `newLeads` with `useSuspenseQuery` results from server fns. Empty states when no data.
+- Calendar (`_authenticated/calendar.tsx` + `CalendarGrid`): fetch properties+units+reservations for the visible date range. Compute `startOffset`/`length` from `check_in`/`check_out` relative to grid start. Wire "הזמנה חדשה" button + reservation popover status change to real mutations.
+- Reservations: real table with filters (status, channel, date range), inline create form (per your spec, no modal), edit, cancel.
+- Properties (`נכסים ומחירונים`): properties list with nested units, rate-seasons editor per property.
+- Leads (`לידים ושיווק`): kanban by stage with drag-to-update, inline add lead, campaigns list tab.
+- Customers: table with search, tags, click-through to customer card with reservation history (join to reservations by phone or customer_id).
 
-**`src/components/shell/PageHeader.tsx`** — reusable H1 + subtitle right-aligned, primary action button on the far left. Variants: `navy` (default) and `gold` (single top CTA).
+All list/detail views: `ensureQueryData` in loader, `useSuspenseQuery` in component, `useMutation` + `invalidateQueries` for writes, `errorComponent` + `notFoundComponent` on every route.
 
-**`src/components/shell/FilterChips.tsx`** — pill chip row, default `--bg-subtle`, selected `--navy-700` white.
+## Auth plumbing
 
-Wrap `<Outlet />` in `AppShell` inside `__root.tsx`.
+- Install/verify `attachSupabaseAuth` in `src/start.ts` (or existing bearer middleware).
+- `src/routes/auth.tsx`: public sign-in / sign-up with Supabase email+password.
+- `src/routes/_authenticated/route.tsx`: managed auth gate (redirects to `/auth`).
+- Move existing route files under `_authenticated/` (index, calendar, reservations, properties, leads, customers).
+- Root `onAuthStateChange` wired to invalidate router + query cache on SIGNED_IN/OUT/USER_UPDATED only.
 
-## 3. Dashboard (`src/routes/index.tsx`)
+## What's out of scope for this pass
 
-Replace placeholder. Sections:
-- Greeting header ("בוקר טוב · [date] · תמונת מצב של הפורטפוליו")
-- **4 KPI cards** (`KpiCard` component): שיחות פתוחות, שוהים עכשיו, תפוסה החודש %, הכנסות החודש ₪. Icon in tinted square (3 navy-100, 1 gold-100), 28px bold tabular number, label + sub-line.
-- **3 chart cards** (Recharts): הכנסות לפי חודש (bar, current month gold), מגמת תפוסה (line), מיקס ערוצים (donut w/ channel colors)
-- **3 list cards**: הגעות היום, עזיבות היום, לידים חדשים — each with "הכל ←" link
+- No channel-manager integrations (Booking.com/Airbnb sync) — channels remain a manual field on reservations.
+- No WhatsApp/messaging inbox — the "שיחות פתוחות" KPI shows 0 until that module is built.
+- No file storage / parents-form uploads yet.
+- No seed data — every account starts empty and gets an inline "add your first property" empty state.
 
-Mock data in `src/lib/mock/dashboard.ts`. Head meta specific to this route.
+## Order of execution
 
-## 4. Calendar (`src/routes/calendar.tsx`)
-
-**Toolbar**: segmented control (היום · שבוע · שבועיים · חודש), month picker, prev/next arrows, property filter dropdown, unit search, channel legend chips.
-
-**Grid** (`src/components/calendar/CalendarGrid.tsx`):
-- Sticky right column = unit names grouped under property headers (U360, Seaside, Royal Park, Bar Lavi)
-- Date columns with Hebrew day letter + date; Saturdays tinted `--bg-subtle`, today tinted `--navy-100`
-- Reservation bars: absolutely-positioned, rounded, channel-colored, guest name inside
-- Blocks = diagonal-stripe pattern in `--ch-block`
-- Click bar → Popover with guest name, phone (LTR), dates, status dropdown, quick action icons
-
-CSS Grid for the layout (sticky right column via `position: sticky; right: 0`). Two-week view first; other views wired as toolbar state.
-
-Mock data in `src/lib/mock/calendar.ts` (4 properties, ~12 units, ~30 reservations across current 2 weeks).
-
-## 5. Route stubs
-
-Create empty `createFileRoute` pages so the sidebar links resolve:
-`reservations`, `leads`, `customers`, `agents`, `reviews`, `properties`, `payments`, `expenses`, `pricing`, `coupons`, `cancellation-policy`, `tasks`, `campaigns`, `journeys`, `marketing-stats`. Each renders a `PageHeader` + a "בקרוב" placeholder card. Each has route-specific `head()` meta.
-
-## Technical details
-
-- Stack: TanStack Start (existing), Tailwind v4, shadcn/ui, Recharts, lucide-react, Heebo font
-- No new packages beyond what's needed — recharts and shadcn are already available; add via shadcn CLI if a primitive is missing
-- Tailwind v4 tokens defined in `@theme inline` — reference existing token style in `src/styles.css`
-- All currency/phone rendering wrapped with `.ltr-num` utility
-- No Lovable Cloud in this phase — mock data only
-- Dark mode: not in scope now (Sxivo is light-only, spec is light-only)
-- Mobile bottom tab bar: stub in place, full styling in a later polish pass
-
-## Files created/modified
-
-Modified: `src/styles.css`, `src/routes/__root.tsx`, `src/routes/index.tsx`
-
-Created:
-- `src/components/shell/{AppShell,Sidebar,TopBar,PageHeader,FilterChips,UserChip}.tsx`
-- `src/components/dashboard/{KpiCard,RevenueChart,OccupancyChart,ChannelMixChart,ActivityListCard}.tsx`
-- `src/components/calendar/{CalendarToolbar,CalendarGrid,ReservationBar,ReservationPopover,ChannelLegend}.tsx`
-- `src/lib/mock/{dashboard,calendar,nav}.ts`
-- `src/routes/calendar.tsx` + 15 stub route files
-
-## Out of scope (next phases)
-
-Reservations table + drawer, Leads kanban, Customers, Agents inline-form pattern, Properties + pricing, Payments/Expenses, Marketing (campaigns/journeys/stats), Tasks & cleaning scheme, Supabase schema, real auth, WhatsApp/Channex integrations.
-
-Want me to also draft the Supabase schema in parallel so Phase 2 modules can bind to real tables? Say the word after approving this plan.
+1. Migration (schema + RLS + GRANTs + triggers).
+2. Auth: `/auth` page, `_authenticated` gate, move routes, bearer attacher.
+3. Server functions per module.
+4. Rewire Dashboard + Calendar (delete `mock/dashboard.ts` + `mock/calendar.ts`).
+5. Build Reservations, Properties, Leads, Customers screens with real CRUD.
+6. Typecheck; verify sign-in → empty dashboard → create property → create reservation → appears on calendar.

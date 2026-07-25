@@ -14,7 +14,339 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          id_number: string | null
+          notes: string | null
+          owner_id: string
+          phone: string | null
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          id_number?: string | null
+          notes?: string | null
+          owner_id: string
+          phone?: string | null
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          id_number?: string | null
+          notes?: string | null
+          owner_id?: string
+          phone?: string | null
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          interest: string | null
+          notes: string | null
+          owner_id: string
+          phone: string | null
+          property_id: string | null
+          source: Database["public"]["Enums"]["lead_source"]
+          stage: Database["public"]["Enums"]["lead_stage"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          interest?: string | null
+          notes?: string | null
+          owner_id: string
+          phone?: string | null
+          property_id?: string | null
+          source?: Database["public"]["Enums"]["lead_source"]
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          interest?: string | null
+          notes?: string | null
+          owner_id?: string
+          phone?: string | null
+          property_id?: string | null
+          source?: Database["public"]["Enums"]["lead_source"]
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_campaigns: {
+        Row: {
+          budget: number
+          channel: string
+          created_at: string
+          end_date: string | null
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          budget?: number
+          channel?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          owner_id: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          budget?: number
+          channel?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rate_seasons: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          min_nights: number
+          name: string
+          nightly_rate: number
+          owner_id: string
+          property_id: string
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          min_nights?: number
+          name: string
+          nightly_rate?: number
+          owner_id: string
+          property_id: string
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          min_nights?: number
+          name?: string
+          nightly_rate?: number
+          owner_id?: string
+          property_id?: string
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_seasons_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservations: {
+        Row: {
+          adults: number
+          channel: Database["public"]["Enums"]["reservation_channel"]
+          check_in: string
+          check_out: string
+          children: number
+          created_at: string
+          customer_id: string | null
+          guest_name: string
+          id: string
+          nights: number | null
+          notes: string | null
+          owner_id: string
+          paid_amount: number
+          phone: string | null
+          status: Database["public"]["Enums"]["reservation_status"]
+          total_amount: number
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          adults?: number
+          channel?: Database["public"]["Enums"]["reservation_channel"]
+          check_in: string
+          check_out: string
+          children?: number
+          created_at?: string
+          customer_id?: string | null
+          guest_name: string
+          id?: string
+          nights?: number | null
+          notes?: string | null
+          owner_id: string
+          paid_amount?: number
+          phone?: string | null
+          status?: Database["public"]["Enums"]["reservation_status"]
+          total_amount?: number
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          adults?: number
+          channel?: Database["public"]["Enums"]["reservation_channel"]
+          check_in?: string
+          check_out?: string
+          children?: number
+          created_at?: string
+          customer_id?: string | null
+          guest_name?: string
+          id?: string
+          nights?: number | null
+          notes?: string | null
+          owner_id?: string
+          paid_amount?: number
+          phone?: string | null
+          status?: Database["public"]["Enums"]["reservation_status"]
+          total_amount?: number
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      units: {
+        Row: {
+          base_price: number
+          capacity: number
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          base_price?: number
+          capacity?: number
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          owner_id: string
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          base_price?: number
+          capacity?: number
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "units_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +355,27 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      lead_source:
+        | "whatsapp"
+        | "website"
+        | "tzimmerer"
+        | "instagram"
+        | "referral"
+        | "other"
+      lead_stage: "new" | "contacted" | "quoted" | "booked" | "lost"
+      reservation_channel:
+        | "booking"
+        | "direct"
+        | "tzimmerer"
+        | "airbnb"
+        | "vrbo"
+        | "block"
+      reservation_status:
+        | "pending"
+        | "confirmed"
+        | "checkin"
+        | "checkout"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +502,31 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      lead_source: [
+        "whatsapp",
+        "website",
+        "tzimmerer",
+        "instagram",
+        "referral",
+        "other",
+      ],
+      lead_stage: ["new", "contacted", "quoted", "booked", "lost"],
+      reservation_channel: [
+        "booking",
+        "direct",
+        "tzimmerer",
+        "airbnb",
+        "vrbo",
+        "block",
+      ],
+      reservation_status: [
+        "pending",
+        "confirmed",
+        "checkin",
+        "checkout",
+        "cancelled",
+      ],
+    },
   },
 } as const

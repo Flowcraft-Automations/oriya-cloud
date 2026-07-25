@@ -1,4 +1,4 @@
-import { channelColor, channelLabel, type Channel } from "@/lib/mock/calendar";
+import { channelColorVar as channelColor, channelLabel, type Channel } from "@/lib/types";
 
 const items: Channel[] = ["booking", "direct", "tzimmerer", "block"];
 

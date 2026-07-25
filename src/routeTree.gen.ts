@@ -13,6 +13,7 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as ReservationsRouteImport } from './routes/reservations'
 import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as ExpensesRouteImport } from './routes/expenses'
@@ -39,6 +40,11 @@ const ReservationsRoute = ReservationsRouteImport.update({
 const PropertiesRoute = PropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PaymentsRoute = PaymentsRouteImport.update({
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/expenses': typeof ExpensesRoute
   '/leads': typeof LeadsRoute
   '/payments': typeof PaymentsRoute
+  '/pricing': typeof PricingRoute
   '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
   '/reviews': typeof ReviewsRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/expenses': typeof ExpensesRoute
   '/leads': typeof LeadsRoute
   '/payments': typeof PaymentsRoute
+  '/pricing': typeof PricingRoute
   '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
   '/reviews': typeof ReviewsRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/expenses': typeof ExpensesRoute
   '/leads': typeof LeadsRoute
   '/payments': typeof PaymentsRoute
+  '/pricing': typeof PricingRoute
   '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
   '/reviews': typeof ReviewsRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/leads'
     | '/payments'
+    | '/pricing'
     | '/properties'
     | '/reservations'
     | '/reviews'
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/leads'
     | '/payments'
+    | '/pricing'
     | '/properties'
     | '/reservations'
     | '/reviews'
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/leads'
     | '/payments'
+    | '/pricing'
     | '/properties'
     | '/reservations'
     | '/reviews'
@@ -167,6 +179,7 @@ export interface RootRouteChildren {
   ExpensesRoute: typeof ExpensesRoute
   LeadsRoute: typeof LeadsRoute
   PaymentsRoute: typeof PaymentsRoute
+  PricingRoute: typeof PricingRoute
   PropertiesRoute: typeof PropertiesRoute
   ReservationsRoute: typeof ReservationsRoute
   ReviewsRoute: typeof ReviewsRoute
@@ -201,6 +214,13 @@ declare module '@tanstack/react-router' {
       path: '/properties'
       fullPath: '/properties'
       preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payments': {
@@ -263,6 +283,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExpensesRoute: ExpensesRoute,
   LeadsRoute: LeadsRoute,
   PaymentsRoute: PaymentsRoute,
+  PricingRoute: PricingRoute,
   PropertiesRoute: PropertiesRoute,
   ReservationsRoute: ReservationsRoute,
   ReviewsRoute: ReviewsRoute,

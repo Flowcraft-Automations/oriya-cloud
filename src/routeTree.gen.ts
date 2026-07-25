@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as ReservationsRouteImport } from './routes/reservations'
+import { Route as PropertiesRouteImport } from './routes/properties'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
@@ -23,6 +24,11 @@ const TasksRoute = TasksRouteImport.update({
 const ReservationsRoute = ReservationsRouteImport.update({
   id: '/reservations',
   path: '/reservations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PropertiesRoute = PropertiesRouteImport.update({
+  id: '/properties',
+  path: '/properties',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeadsRoute = LeadsRouteImport.update({
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/leads': typeof LeadsRoute
+  '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
   '/tasks': typeof TasksRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/leads': typeof LeadsRoute
+  '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
   '/tasks': typeof TasksRoute
 }
@@ -60,21 +68,36 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/leads': typeof LeadsRoute
+  '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/calendar' | '/leads' | '/reservations' | '/tasks'
+  fullPaths:
+    | '/'
+    | '/calendar'
+    | '/leads'
+    | '/properties'
+    | '/reservations'
+    | '/tasks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/calendar' | '/leads' | '/reservations' | '/tasks'
-  id: '__root__' | '/' | '/calendar' | '/leads' | '/reservations' | '/tasks'
+  to: '/' | '/calendar' | '/leads' | '/properties' | '/reservations' | '/tasks'
+  id:
+    | '__root__'
+    | '/'
+    | '/calendar'
+    | '/leads'
+    | '/properties'
+    | '/reservations'
+    | '/tasks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
   LeadsRoute: typeof LeadsRoute
+  PropertiesRoute: typeof PropertiesRoute
   ReservationsRoute: typeof ReservationsRoute
   TasksRoute: typeof TasksRoute
 }
@@ -93,6 +116,13 @@ declare module '@tanstack/react-router' {
       path: '/reservations'
       fullPath: '/reservations'
       preLoaderRoute: typeof ReservationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/properties': {
+      id: '/properties'
+      path: '/properties'
+      fullPath: '/properties'
+      preLoaderRoute: typeof PropertiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leads': {
@@ -123,6 +153,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   LeadsRoute: LeadsRoute,
+  PropertiesRoute: PropertiesRoute,
   ReservationsRoute: ReservationsRoute,
   TasksRoute: TasksRoute,
 }

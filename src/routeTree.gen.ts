@@ -13,6 +13,7 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as ReservationsRouteImport } from './routes/reservations'
 import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CalendarRouteImport } from './routes/calendar'
@@ -37,6 +38,11 @@ const ReservationsRoute = ReservationsRouteImport.update({
 const PropertiesRoute = PropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentsRoute = PaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeadsRoute = LeadsRouteImport.update({
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/customers': typeof CustomersRoute
   '/leads': typeof LeadsRoute
+  '/payments': typeof PaymentsRoute
   '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
   '/reviews': typeof ReviewsRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/customers': typeof CustomersRoute
   '/leads': typeof LeadsRoute
+  '/payments': typeof PaymentsRoute
   '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
   '/reviews': typeof ReviewsRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/customers': typeof CustomersRoute
   '/leads': typeof LeadsRoute
+  '/payments': typeof PaymentsRoute
   '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
   '/reviews': typeof ReviewsRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/customers'
     | '/leads'
+    | '/payments'
     | '/properties'
     | '/reservations'
     | '/reviews'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/customers'
     | '/leads'
+    | '/payments'
     | '/properties'
     | '/reservations'
     | '/reviews'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/customers'
     | '/leads'
+    | '/payments'
     | '/properties'
     | '/reservations'
     | '/reviews'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   CustomersRoute: typeof CustomersRoute
   LeadsRoute: typeof LeadsRoute
+  PaymentsRoute: typeof PaymentsRoute
   PropertiesRoute: typeof PropertiesRoute
   ReservationsRoute: typeof ReservationsRoute
   ReviewsRoute: typeof ReviewsRoute
@@ -175,6 +188,13 @@ declare module '@tanstack/react-router' {
       path: '/properties'
       fullPath: '/properties'
       preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payments': {
+      id: '/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof PaymentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leads': {
@@ -221,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   CustomersRoute: CustomersRoute,
   LeadsRoute: LeadsRoute,
+  PaymentsRoute: PaymentsRoute,
   PropertiesRoute: PropertiesRoute,
   ReservationsRoute: ReservationsRoute,
   ReviewsRoute: ReviewsRoute,

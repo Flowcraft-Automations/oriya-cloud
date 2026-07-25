@@ -11,5 +11,5 @@ export const Route = createFileRoute("/leads")({
       { property: "og:description", content: "צינור לידים" },
     ],
   }),
-  component: () => (<><PageHeader title="לידים" subtitle="צינור לידים לפי סטטוס" /><ComingSoon /></>),
+  component: () => (<><PageHeader title="לידים ושיווק" subtitle="צינור לידים, קמפיינים ומסעות לקוח" /><ComingSoon /></>),
 });

@@ -11,5 +11,5 @@ export const Route = createFileRoute("/properties")({
       { property: "og:description", content: "ניהול נכסים" },
     ],
   }),
-  component: () => (<><PageHeader title="נכסים" subtitle="פורטפוליו הנכסים והיחידות" /><ComingSoon /></>),
+  component: () => (<><PageHeader title="נכסים ומחירונים" subtitle="פורטפוליו, יחידות, עונות ומחירונים" /><ComingSoon /></>),
 });

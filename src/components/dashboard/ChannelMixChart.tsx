@@ -1,8 +1,21 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { OCard, OCardBody, OCardHeader, OCardTitle } from "@/components/ui-oriya/Card";
-import { channelMix } from "@/lib/mock/dashboard";
 
-export function ChannelMixChart() {
+type Slice = { name: string; value: number; color: string };
+
+export function ChannelMixChart({ data }: { data: Slice[] }) {
+  if (!data.length) {
+    return (
+      <OCard>
+        <OCardHeader><OCardTitle>מיקס ערוצים</OCardTitle></OCardHeader>
+        <OCardBody>
+          <div className="py-8 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
+            אין נתונים לחודש הזה
+          </div>
+        </OCardBody>
+      </OCard>
+    );
+  }
   return (
     <OCard>
       <OCardHeader>
@@ -13,8 +26,8 @@ export function ChannelMixChart() {
           <div className="h-40 w-40 shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={channelMix} dataKey="value" innerRadius={44} outerRadius={64} paddingAngle={2} stroke="none">
-                  {channelMix.map((c, i) => (
+                <Pie data={data} dataKey="value" innerRadius={44} outerRadius={64} paddingAngle={2} stroke="none">
+                  {data.map((c, i) => (
                     <Cell key={i} fill={c.color} />
                   ))}
                 </Pie>
@@ -23,7 +36,7 @@ export function ChannelMixChart() {
             </ResponsiveContainer>
           </div>
           <ul className="flex-1 space-y-2 text-sm">
-            {channelMix.map((c) => (
+            {data.map((c) => (
               <li key={c.name} className="flex items-center justify-between">
                 <span className="flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: c.color }} />

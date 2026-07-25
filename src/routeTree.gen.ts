@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as ReservationsRouteImport } from './routes/reservations'
 import { Route as PropertiesRouteImport } from './routes/properties'
 import { Route as LeadsRouteImport } from './routes/leads'
@@ -21,6 +22,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewsRoute = ReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReservationsRoute = ReservationsRouteImport.update({
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/leads': typeof LeadsRoute
   '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
+  '/reviews': typeof ReviewsRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/leads': typeof LeadsRoute
   '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
+  '/reviews': typeof ReviewsRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/leads': typeof LeadsRoute
   '/properties': typeof PropertiesRoute
   '/reservations': typeof ReservationsRoute
+  '/reviews': typeof ReviewsRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/properties'
     | '/reservations'
+    | '/reviews'
     | '/tasks'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/properties'
     | '/reservations'
+    | '/reviews'
     | '/tasks'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/properties'
     | '/reservations'
+    | '/reviews'
     | '/tasks'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   LeadsRoute: typeof LeadsRoute
   PropertiesRoute: typeof PropertiesRoute
   ReservationsRoute: typeof ReservationsRoute
+  ReviewsRoute: typeof ReviewsRoute
   TasksRoute: typeof TasksRoute
 }
 
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/tasks'
       fullPath: '/tasks'
       preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reviews': {
+      id: '/reviews'
+      path: '/reviews'
+      fullPath: '/reviews'
+      preLoaderRoute: typeof ReviewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reservations': {
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   LeadsRoute: LeadsRoute,
   PropertiesRoute: PropertiesRoute,
   ReservationsRoute: ReservationsRoute,
+  ReviewsRoute: ReviewsRoute,
   TasksRoute: TasksRoute,
 }
 export const routeTree = rootRouteImport

@@ -66,7 +66,7 @@ function ReservationsPage() {
           <table className="w-full text-sm" dir="rtl">
             <thead>
               <tr className="text-right text-[11px] uppercase" style={{ color: "var(--text-secondary)" }}>
-                <Th>אורח</Th><Th>יחידה</Th><Th>ערוץ</Th><Th>תאריכים</Th><Th>לילות</Th><Th>סכום</Th><Th>סטטוס</Th><Th></Th>
+                <Th>אורח</Th><Th>יחידה</Th><Th>ערוץ</Th><Th>תאריכים</Th><Th>לילות</Th><Th>סכום</Th><Th>סטטוס</Th><Th>{" "}</Th>
               </tr>
             </thead>
             <tbody>

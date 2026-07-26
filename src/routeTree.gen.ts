@@ -15,9 +15,11 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedReservationsIndexRouteImport } from './routes/_authenticated/reservations.index'
+import { Route as AuthenticatedPaymentsIndexRouteImport } from './routes/_authenticated/payments.index'
 import { Route as AuthenticatedLeadsIndexRouteImport } from './routes/_authenticated/leads.index'
 import { Route as AuthenticatedCustomersIndexRouteImport } from './routes/_authenticated/customers.index'
 import { Route as AuthenticatedReservationsIdRouteImport } from './routes/_authenticated/reservations.$id'
+import { Route as AuthenticatedPaymentsIdRouteImport } from './routes/_authenticated/payments.$id'
 import { Route as AuthenticatedLeadsIdRouteImport } from './routes/_authenticated/leads.$id'
 import { Route as AuthenticatedCustomersIdRouteImport } from './routes/_authenticated/customers.$id'
 
@@ -51,6 +53,12 @@ const AuthenticatedReservationsIndexRoute =
     path: '/reservations/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPaymentsIndexRoute =
+  AuthenticatedPaymentsIndexRouteImport.update({
+    id: '/payments/',
+    path: '/payments/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedLeadsIndexRoute = AuthenticatedLeadsIndexRouteImport.update({
   id: '/leads/',
   path: '/leads/',
@@ -68,6 +76,11 @@ const AuthenticatedReservationsIdRoute =
     path: '/reservations/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPaymentsIdRoute = AuthenticatedPaymentsIdRouteImport.update({
+  id: '/payments/$id',
+  path: '/payments/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedLeadsIdRoute = AuthenticatedLeadsIdRouteImport.update({
   id: '/leads/$id',
   path: '/leads/$id',
@@ -87,9 +100,11 @@ export interface FileRoutesByFullPath {
   '/properties': typeof AuthenticatedPropertiesRoute
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
+  '/payments/$id': typeof AuthenticatedPaymentsIdRoute
   '/reservations/$id': typeof AuthenticatedReservationsIdRoute
   '/customers/': typeof AuthenticatedCustomersIndexRoute
   '/leads/': typeof AuthenticatedLeadsIndexRoute
+  '/payments/': typeof AuthenticatedPaymentsIndexRoute
   '/reservations/': typeof AuthenticatedReservationsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -99,9 +114,11 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
+  '/payments/$id': typeof AuthenticatedPaymentsIdRoute
   '/reservations/$id': typeof AuthenticatedReservationsIdRoute
   '/customers': typeof AuthenticatedCustomersIndexRoute
   '/leads': typeof AuthenticatedLeadsIndexRoute
+  '/payments': typeof AuthenticatedPaymentsIndexRoute
   '/reservations': typeof AuthenticatedReservationsIndexRoute
 }
 export interface FileRoutesById {
@@ -113,9 +130,11 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/_authenticated/leads/$id': typeof AuthenticatedLeadsIdRoute
+  '/_authenticated/payments/$id': typeof AuthenticatedPaymentsIdRoute
   '/_authenticated/reservations/$id': typeof AuthenticatedReservationsIdRoute
   '/_authenticated/customers/': typeof AuthenticatedCustomersIndexRoute
   '/_authenticated/leads/': typeof AuthenticatedLeadsIndexRoute
+  '/_authenticated/payments/': typeof AuthenticatedPaymentsIndexRoute
   '/_authenticated/reservations/': typeof AuthenticatedReservationsIndexRoute
 }
 export interface FileRouteTypes {
@@ -127,9 +146,11 @@ export interface FileRouteTypes {
     | '/properties'
     | '/customers/$id'
     | '/leads/$id'
+    | '/payments/$id'
     | '/reservations/$id'
     | '/customers/'
     | '/leads/'
+    | '/payments/'
     | '/reservations/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -139,9 +160,11 @@ export interface FileRouteTypes {
     | '/'
     | '/customers/$id'
     | '/leads/$id'
+    | '/payments/$id'
     | '/reservations/$id'
     | '/customers'
     | '/leads'
+    | '/payments'
     | '/reservations'
   id:
     | '__root__'
@@ -152,9 +175,11 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/customers/$id'
     | '/_authenticated/leads/$id'
+    | '/_authenticated/payments/$id'
     | '/_authenticated/reservations/$id'
     | '/_authenticated/customers/'
     | '/_authenticated/leads/'
+    | '/_authenticated/payments/'
     | '/_authenticated/reservations/'
   fileRoutesById: FileRoutesById
 }
@@ -207,6 +232,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReservationsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/payments/': {
+      id: '/_authenticated/payments/'
+      path: '/payments'
+      fullPath: '/payments/'
+      preLoaderRoute: typeof AuthenticatedPaymentsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/leads/': {
       id: '/_authenticated/leads/'
       path: '/leads'
@@ -226,6 +258,13 @@ declare module '@tanstack/react-router' {
       path: '/reservations/$id'
       fullPath: '/reservations/$id'
       preLoaderRoute: typeof AuthenticatedReservationsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/payments/$id': {
+      id: '/_authenticated/payments/$id'
+      path: '/payments/$id'
+      fullPath: '/payments/$id'
+      preLoaderRoute: typeof AuthenticatedPaymentsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/leads/$id': {
@@ -251,9 +290,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedCustomersIdRoute: typeof AuthenticatedCustomersIdRoute
   AuthenticatedLeadsIdRoute: typeof AuthenticatedLeadsIdRoute
+  AuthenticatedPaymentsIdRoute: typeof AuthenticatedPaymentsIdRoute
   AuthenticatedReservationsIdRoute: typeof AuthenticatedReservationsIdRoute
   AuthenticatedCustomersIndexRoute: typeof AuthenticatedCustomersIndexRoute
   AuthenticatedLeadsIndexRoute: typeof AuthenticatedLeadsIndexRoute
+  AuthenticatedPaymentsIndexRoute: typeof AuthenticatedPaymentsIndexRoute
   AuthenticatedReservationsIndexRoute: typeof AuthenticatedReservationsIndexRoute
 }
 
@@ -263,9 +304,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedCustomersIdRoute: AuthenticatedCustomersIdRoute,
   AuthenticatedLeadsIdRoute: AuthenticatedLeadsIdRoute,
+  AuthenticatedPaymentsIdRoute: AuthenticatedPaymentsIdRoute,
   AuthenticatedReservationsIdRoute: AuthenticatedReservationsIdRoute,
   AuthenticatedCustomersIndexRoute: AuthenticatedCustomersIndexRoute,
   AuthenticatedLeadsIndexRoute: AuthenticatedLeadsIndexRoute,
+  AuthenticatedPaymentsIndexRoute: AuthenticatedPaymentsIndexRoute,
   AuthenticatedReservationsIndexRoute: AuthenticatedReservationsIndexRoute,
 }
 

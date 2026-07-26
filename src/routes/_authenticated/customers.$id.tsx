@@ -4,9 +4,9 @@ import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-q
 import { useServerFn } from "@tanstack/react-start";
 import { Mail, MessageCircle, Send, Star } from "lucide-react";
 import { getCustomerDetail, updateCustomer, deleteCustomer, listInvoicesByCustomer } from "@/lib/data.functions";
-import { channelLabel, statusLabel, type Channel, type ReservationStatus } from "@/lib/types";
-import { DetailLayout, SectionBar, FieldRow, EmptyState } from "@/components/detail/DetailLayout";
-import { InvoicesTable, statusPillFor } from "@/components/detail/InvoicesTable";
+import { channelLabel, statusLabel, statusTone, channelTone, type Channel, type ReservationStatus } from "@/lib/types";
+import { DetailLayout, SectionBar, FieldRow, EmptyState, TonePill } from "@/components/detail/DetailLayout";
+import { InvoicesTable } from "@/components/detail/InvoicesTable";
 
 export const Route = createFileRoute("/_authenticated/customers/$id")({
   head: () => ({ meta: [{ title: "כרטיס לקוח · Oriya OS" }] }),
@@ -122,11 +122,11 @@ function CustomerDetailPage() {
                   onClick={() => nav({ to: "/reservations/$id", params: { id: r.id } })}>
                   <td className="ltr-num px-4 py-2.5">{r.check_in} → {r.check_out}</td>
                   <td className="ltr-num px-4 py-2.5">{r.nights}</td>
-                  <td className="px-4 py-2.5">{channelLabel[r.channel as Channel]}</td>
                   <td className="px-4 py-2.5">
-                    <span className="rounded-full px-2 py-0.5 text-[11px]" style={statusPillFor(r.status as string)}>
-                      {statusLabel[r.status as ReservationStatus]}
-                    </span>
+                    <TonePill label={channelLabel[r.channel as Channel]} tone={channelTone[r.channel as Channel] ?? "neutral"} />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <TonePill label={statusLabel[r.status as ReservationStatus]} tone={statusTone[r.status as ReservationStatus] ?? "neutral"} />
                   </td>
                   <td className="ltr-num px-4 py-2.5">₪{Number(r.total_amount).toLocaleString()}</td>
                   <td className="px-4 py-2.5">{r.rating ? <span className="inline-flex items-center gap-1"><Star size={12} style={{ color: "var(--gold-600)" }} />{r.rating}</span> : "—"}</td>

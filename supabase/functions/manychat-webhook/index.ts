@@ -56,7 +56,15 @@ Deno.serve(async (req) => {
   const sb = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
   const owner_id = await resolveOwnerId(sb);
 
-  const { data: existing } = await sb.from("leads").select("id, warmth, full_name").eq("phone", phone).maybeSingle();
+  // ManyChat subscriber id (used to deep-link into ManyChat chat)
+  const manychat_subscriber_id: string | null =
+    (body?.id != null ? String(body.id) :
+      (body?.subscriber?.id != null ? String(body.subscriber.id) :
+        (cf?.subscriber_id != null ? String(cf.subscriber_id) : null)));
+
+  const { data: existing } = await sb.from("leads")
+    .select("id, warmth, full_name, manychat_subscriber_id")
+    .eq("phone", phone).maybeSingle();
 
   const merged: Warmth = existing
     ? (rank[warmth] > rank[(existing.warmth as Warmth) ?? "cold"] ? warmth : ((existing.warmth as Warmth) ?? "cold"))
@@ -69,12 +77,14 @@ Deno.serve(async (req) => {
     const { data: ins, error } = await sb.from("leads").insert({
       owner_id, full_name, phone, source: "whatsapp", stage: "new",
       warmth: merged, bot_stage: stage, last_bot_event_at: now,
+      manychat_subscriber_id,
     }).select("id").single();
     if (error) return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500, headers: { ...cors, "content-type": "application/json" } });
     leadId = ins.id as string;
   } else {
     const patch: Record<string, unknown> = { warmth: merged, bot_stage: stage, last_bot_event_at: now };
     if ((!existing!.full_name || existing!.full_name === "ליד וואטסאפ") && full_name) patch.full_name = full_name;
+    if (!existing!.manychat_subscriber_id && manychat_subscriber_id) patch.manychat_subscriber_id = manychat_subscriber_id;
     await sb.from("leads").update(patch).eq("id", leadId);
   }
 

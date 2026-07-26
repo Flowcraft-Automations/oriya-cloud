@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { ArrowUpLeft } from "lucide-react";
 import { OCard } from "@/components/ui-oriya/Card";
 
 type Props = {
@@ -7,13 +8,27 @@ type Props = {
   sub: string;
   icon: LucideIcon;
   tone?: "navy" | "gold";
+  onClick?: () => void;
 };
 
-export function KpiCard({ label, value, sub, icon: Icon, tone = "navy" }: Props) {
+export function KpiCard({ label, value, sub, icon: Icon, tone = "navy", onClick }: Props) {
   const iconBg = tone === "gold" ? "var(--gold-100)" : "var(--navy-100)";
   const iconColor = tone === "gold" ? "var(--gold-600)" : "var(--navy-700)";
+  const clickable = !!onClick;
   return (
-    <OCard className="p-5">
+    <OCard
+      onClick={onClick}
+      className={`group relative p-5 ${clickable ? "cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md" : ""}`}
+    >
+      {clickable && (
+        <span
+          className="absolute end-3 top-3 flex h-6 w-6 items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+          style={{ backgroundColor: "var(--gold-100)", color: "var(--gold-600)" }}
+          aria-hidden
+        >
+          <ArrowUpLeft size={13} />
+        </span>
+      )}
       <div className="flex items-start gap-4">
         <div
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg"

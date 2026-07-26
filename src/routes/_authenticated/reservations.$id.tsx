@@ -4,8 +4,8 @@ import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-q
 import { useServerFn } from "@tanstack/react-start";
 import { User, Plus } from "lucide-react";
 import { getReservationDetail, updateReservation, deleteReservation, listInvoicesByReservation, createInvoice } from "@/lib/data.functions";
-import { channelLabel, statusLabel, type Channel, type ReservationStatus } from "@/lib/types";
-import { DetailLayout, SectionBar, FieldRow } from "@/components/detail/DetailLayout";
+import { channelLabel, statusLabel, statusTone, channelTone, type Channel, type ReservationStatus } from "@/lib/types";
+import { DetailLayout, SectionBar, FieldRow, TonePill } from "@/components/detail/DetailLayout";
 import { InvoicesTable } from "@/components/detail/InvoicesTable";
 
 export const Route = createFileRoute("/_authenticated/reservations/$id")({
@@ -41,15 +41,12 @@ function ReservationDetailPage() {
   const [review, setReview] = useState(reservation.review ?? "");
   const balance = Number(reservation.total_amount ?? 0) - Number(reservation.paid_amount ?? 0);
 
-  const statusTone: Record<string, "success" | "info" | "gold" | "neutral" | "danger"> = {
-    pending: "info", confirmed: "success", checkin: "gold", checkout: "neutral", cancelled: "danger",
-  };
-
   return (
     <DetailLayout
       kicker="הזמנה"
       title={reservation.guest_name}
-      statusPill={{ label: statusLabel[reservation.status as ReservationStatus], tone: statusTone[reservation.status] ?? "neutral" }}
+      statusPill={{ label: statusLabel[reservation.status as ReservationStatus], tone: statusTone[reservation.status as ReservationStatus] ?? "neutral" }}
+      tags={<TonePill label={channelLabel[reservation.channel as Channel]} tone={channelTone[reservation.channel as Channel] ?? "neutral"} />}
       onDelete={() => { if (confirm("למחוק הזמנה?")) delM.mutate(); }}
       tabs={[
         { key: "details", label: "פרטים" },
@@ -64,7 +61,7 @@ function ReservationDetailPage() {
           <SectionBar title="נכס וערוץ" accent="var(--gold-100)" barColor="var(--gold-500)">
             <FieldRow label="נכס" value={property?.name} />
             <FieldRow label="יחידה" value={unit?.name} />
-            <FieldRow label="ערוץ" value={channelLabel[reservation.channel as Channel]} />
+            <FieldRow label="ערוץ" value={<TonePill label={channelLabel[reservation.channel as Channel]} tone={channelTone[reservation.channel as Channel] ?? "neutral"} />} />
             <div className="flex items-center justify-between gap-6 px-5 py-3">
               <select value={reservation.status} onChange={(e) => updM.mutate({ status: e.target.value as ReservationStatus })}
                 className="rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }}>

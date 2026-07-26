@@ -1,78 +1,24 @@
-## Situation
+# לידים בזמן אמת · עמודת חמימות · לינק ל־ManyChat
 
-Two POSTs from ManyChat did reach the webhook (2026-07-26 16:31:09 and 16:31:50), but our current `manychat-webhook` handler only logs two fields:
+## 1. עדכונים חיים (Realtime)
+- **מיגרציה**: `ALTER PUBLICATION supabase_realtime ADD TABLE public.leads, public.lead_inquiries;` והגדרת `REPLICA IDENTITY FULL` על שתי הטבלאות.
+- **בעמוד הרשימה** `src/routes/_authenticated/leads.index.tsx`: `useEffect` שנרשם ל־`postgres_changes` על `leads` (INSERT/UPDATE/DELETE) ומריץ `qc.invalidateQueries({ queryKey: ["leads"] })`. cleanup ב־`supabase.removeChannel`.
+- **בעמוד הפרטים** `src/routes/_authenticated/leads.$id.tsx`: אותה תבנית — האזנה על `leads` (עם `filter: id=eq.{id}`) ועל `lead_inquiries` (`filter: lead_id=eq.{id}`) עם invalidate של המפתחות הרלוונטיים.
+- לא נוגעים ב־loader — הוא נשאר כמו שהוא; Realtime רק דוחף invalidate כשיש שינוי, וה־Query עצמו מרענן.
 
-```
-[manychat-webhook] event: undefined phone: null
-```
+## 2. עמודת חמימות בטבלה
+- הוספת עמודה **"חמימות"** ל־`LeadsTable` בין "מקור" ל־"שלב".
+- `InlineSelect` עם 3 ערכים (`cold` קר · `warm` פושר · `hot` חם) ו־`TonePill` צבועה (neutral / gold / danger — אותו מיפוי שכבר קיים ב־`leads.$id.tsx`).
+- שמירה דרך `updateLead` הקיים (הוא כבר מקבל `warmth`).
+- להוסיף גם צ׳יפ חמימות בכרטיסי הקנבן.
 
-That means ManyChat's payload uses different field names than we assumed (`event` / `phone` at the top level). The raw body wasn't captured, so I genuinely cannot see what fields ManyChat sent — the log line above is all that exists.
+## 3. לינק ל־ManyChat לכל ליד
+- **מיגרציה**: הוספת עמודה `manychat_subscriber_id text` לטבלת `leads`.
+- **עדכון ה־Webhook** `supabase/functions/manychat-webhook/index.ts`: לקלוט את `body.id` (מזהה ה־subscriber של ManyChat שנשלח בכל בקשה) ולשמור אותו בעמודה החדשה — גם ב־INSERT וגם ב־UPDATE (רק אם עדיין ריק, כדי לא לדרוס).
+- **בטבלה ובכרטיס הפרטים**: כפתור/אייקון WhatsApp שמוביל ל־`https://app.manychat.com/fb3418755/chat/{manychat_subscriber_id}` (target="_blank", rel="noopener"). כאשר `manychat_subscriber_id` חסר — הכפתור לא מוצג (או מוצג מושבת) כי אין subscriber ב־ManyChat.
+- הלינק בעמוד הפרטים ישב ליד שם הליד/צ׳יפ החמימות בכותרת.
 
-To map ManyChat → our `leads` / `lead_inquiries` schema correctly, I need to see one real payload first.
-
-## Plan
-
-### Step 1 — Capture the real payload (one deploy)
-
-Update `supabase/functions/manychat-webhook/index.ts` so it:
-
-- Reads the raw body as text, then parses JSON.
-- Logs the full body: `console.log('[manychat-webhook] RAW', rawText)`.
-- Logs top-level keys and a shallow dump of any `data` / `subscriber` / `contact` / `custom_fields` objects.
-- Still returns `200 { ok: true }` so ManyChat marks the step successful.
-- Does NOT yet write to the DB — pure inspection pass, so a wrong-shape payload can't create bad rows.
-
-### Step 2 — You fire one test from ManyChat
-
-Trigger the External Request node once from any test contact so a fresh payload lands in the logs.
-
-### Step 3 — Read the logs and design the mapping
-
-I pull the raw JSON from `edge_function_logs`, then in this same turn write the actual field mapping. Expected shape from ManyChat's External Request is roughly:
-
-```text
-{
-  "subscriber": { "id", "first_name", "last_name", "phone", "whatsapp_phone", ... },
-  "custom_fields": { <your bot fields: apt, check_in, check_out, guests, audience, stage, ...> },
-  "tags": [...],
-  "data": { ... }   // if you added a custom "data" JSON in the request body
-}
-```
-
-Whatever it actually is, I'll map:
-
-| Our column | Likely ManyChat source |
-|---|---|
-| `leads.phone` | `subscriber.whatsapp_phone` or `subscriber.phone` |
-| `leads.full_name` | `subscriber.first_name` + `subscriber.last_name` |
-| `leads.source` | constant `whatsapp` |
-| `leads.bot_stage` | `custom_fields.stage` (or the ManyChat block name you send) |
-| `leads.warmth` | derived from which fields are present (apt → warm, dates+guests → hot) |
-| `lead_inquiries.unit_id` | lookup by `custom_fields.apt` (e.g. `U360`) |
-| `lead_inquiries.check_in/out/guests` | matching `custom_fields.*` |
-| `lead_inquiries.payload` | full raw body |
-
-### Step 4 — Rewrite the handler with the confirmed mapping
-
-Replace the inspection handler with the real one:
-
-- Upsert lead by phone (normalized to digits).
-- Insert a `lead_inquiries` row per event.
-- Update `bot_stage`, `last_bot_event_at`, and bump `warmth` (never downgrade) using the derivation rules from the previous turn.
-- Return `{ ok, lead_id, warmth, bot_stage }` so ManyChat can save `lead_id` back as a custom field.
-- Keep signature verification (`x-manychat-signature`) only if `MANYCHAT_WEBHOOK_SECRET` is set.
-
-### Step 5 — Verify
-
-- Ask you to fire the flow again from ManyChat.
-- Read `edge_function_logs` for a success line.
-- Query `leads` + `lead_inquiries` for the test phone via `supabase--read_query` and confirm the row shape.
-- Confirm the lead appears in `/leads` with the correct warmth chip and bot stage.
-
-## Why two deploys instead of one
-
-I could guess the field names now, but every real integration I've seen where ManyChat is on the other side uses a different External Request body per project (you control what JSON gets posted from ManyChat's UI). Guessing risks silently writing wrong data into `leads` for every test you run. One 30-second inspection deploy removes that risk entirely.
-
-## No DB changes
-
-`leads.bot_stage`, `leads.warmth`, `leads.last_bot_event_at`, and `lead_inquiries.bot_stage / bot_event / payload` already exist from the previous turn. No migration needed.
+## נקודות טכניות
+- Realtime על `leads` דורש `REPLICA IDENTITY FULL` כדי שאירועי UPDATE יכילו את `owner_id` — אחרת מסנני RLS ידחו. RLS הקיים (owner-based) נשאר כמו שהוא.
+- לא ניגעים ב־Kanban עצמו מעבר לצ׳יפ החמימות.
+- אין שינוי בזרימות שליחה, בטבלת customers, או ב־Marketing.

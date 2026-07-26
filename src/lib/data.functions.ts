@@ -233,7 +233,7 @@ export const listLeads = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("leads")
-      .select("id, full_name, phone, email, source, interest, stage, property_id, notes, created_at")
+      .select("id, full_name, phone, email, source, interest, stage, property_id, notes, created_at, warmth, bot_stage, last_bot_event_at, manychat_subscriber_id")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];

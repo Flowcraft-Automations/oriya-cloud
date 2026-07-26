@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { User, Plus } from "lucide-react";
+import { User, Plus, Home, Link2 } from "lucide-react";
 import { getReservationDetail, updateReservation, deleteReservation, listInvoicesByReservation, createInvoice } from "@/lib/data.functions";
 import { channelLabel, statusLabel, statusTone, channelTone, type Channel, type ReservationStatus } from "@/lib/types";
 import { DetailLayout, SectionBar, FieldRow, EditableRow, TonePill } from "@/components/detail/DetailLayout";
@@ -44,10 +44,29 @@ function ReservationDetailPage() {
 
   return (
     <DetailLayout
-      kicker="הזמנה"
-      title={reservation.guest_name}
+      kicker={`הזמנה #${String(reservation.id).slice(0, 8).toUpperCase()}`}
+      title={`${property?.name ?? "נכס"} · ${unit?.name ?? ""}`}
       statusPill={{ label: statusLabel[reservation.status as ReservationStatus], tone: statusTone[reservation.status as ReservationStatus] ?? "neutral" }}
       tags={<TonePill label={channelLabel[reservation.channel as Channel]} tone={channelTone[reservation.channel as Channel] ?? "neutral"} />}
+      toolbar={
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+            <Home size={12} /> {property?.name} · {unit?.name}
+          </span>
+          {customer ? (
+            <Link to="/customers/$id" params={{ id: customer.id }}
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-[var(--bg-subtle)]"
+              style={{ borderColor: "var(--navy-300, var(--border))", color: "var(--navy-700)" }}>
+              <User size={12} /> {customer.full_name}
+              <Link2 size={11} style={{ color: "var(--text-secondary)" }} />
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+              <User size={12} /> {reservation.guest_name} <span className="opacity-60">(אורח לא מקושר)</span>
+            </span>
+          )}
+        </div>
+      }
       onDelete={() => { if (confirm("למחוק הזמנה?")) delM.mutate(); }}
       tabs={[
         { key: "details", label: "פרטים" },

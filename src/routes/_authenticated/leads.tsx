@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Trash2 } from "lucide-react";
@@ -25,6 +25,7 @@ const stages: LeadStage[] = ["new", "contacted", "quoted", "booked", "lost"];
 
 function LeadsPage() {
   const qc = useQueryClient();
+  const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const list = useServerFn(listLeads);
   const create = useServerFn(createLead);
@@ -83,16 +84,21 @@ function LeadsPage() {
               </div>
               <div className="space-y-2">
                 {items.map((l: Lead) => (
-                  <div key={l.id} className="rounded-md border p-2.5 hover:bg-[var(--bg-subtle)]" style={{ borderColor: "var(--border)" }}>
+                  <div
+                    key={l.id}
+                    onClick={() => nav({ to: "/leads/$id", params: { id: l.id } })}
+                    className="cursor-pointer rounded-md border p-2.5 hover:bg-[var(--bg-subtle)]"
+                    style={{ borderColor: "var(--border)" }}
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <Link to="/leads/$id" params={{ id: l.id }} className="text-sm font-medium hover:underline" style={{ color: "var(--text-primary)" }}>{l.full_name}</Link>
+                        <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{l.full_name}</div>
                         <div className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
                           {sourceLabel[l.source as LeadSource]} {l.interest && `· ${l.interest}`}
                         </div>
                         {l.phone && <div className="ltr-num mt-0.5 text-[11px]" style={{ color: "var(--text-secondary)" }}>{l.phone}</div>}
                       </div>
-                      <button onClick={() => { if (confirm("למחוק?")) delM.mutate(l.id); }} aria-label="מחק">
+                      <button onClick={(e) => { e.stopPropagation(); if (confirm("למחוק?")) delM.mutate(l.id); }} aria-label="מחק">
                         <Trash2 size={12} style={{ color: "var(--danger)" }} />
                       </button>
                     </div>
@@ -100,6 +106,7 @@ function LeadsPage() {
                       className="mt-2 w-full rounded border px-1.5 py-1 text-[11px]"
                       style={{ borderColor: "var(--border)" }}
                       value={l.stage}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(e) => updM.mutate({ id: l.id, stage: e.target.value as LeadStage })}
                     >
                       {stages.map((st) => <option key={st} value={st}>{stageLabel[st]}</option>)}

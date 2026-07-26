@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Trash2 } from "lucide-react";
@@ -24,6 +24,7 @@ export const Route = createFileRoute("/_authenticated/customers")({
 
 function CustomersPage() {
   const qc = useQueryClient();
+  const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [q2, setQ2] = useState("");
   const list = useServerFn(listCustomers);
@@ -88,14 +89,19 @@ function CustomersPage() {
             </thead>
             <tbody>
               {rows.map((c: Customer) => (
-                <tr key={c.id} className="border-t hover:bg-[var(--bg-subtle)]" style={{ borderColor: "var(--border)" }}>
+                <tr
+                  key={c.id}
+                  onClick={() => nav({ to: "/customers/$id", params: { id: c.id } })}
+                  className="cursor-pointer border-t hover:bg-[var(--bg-subtle)]"
+                  style={{ borderColor: "var(--border)" }}
+                >
                   <td className="px-3 py-2.5 font-medium" style={{ color: "var(--text-primary)" }}>
-                    <Link to="/customers/$id" params={{ id: c.id }} className="hover:underline">{c.full_name}</Link>
+                    {c.full_name}
                   </td>
                   <td className="ltr-num px-3 py-2.5" style={{ color: "var(--text-secondary)" }}>{c.phone ?? "—"}</td>
                   <td className="ltr-num px-3 py-2.5" style={{ color: "var(--text-secondary)" }}>{c.email ?? "—"}</td>
                   <td className="px-3 py-2.5">
-                    <button onClick={() => { if (confirm("למחוק?")) delM.mutate(c.id); }} aria-label="מחק">
+                    <button onClick={(e) => { e.stopPropagation(); if (confirm("למחוק?")) delM.mutate(c.id); }} aria-label="מחק">
                       <Trash2 size={14} style={{ color: "var(--danger)" }} />
                     </button>
                   </td>

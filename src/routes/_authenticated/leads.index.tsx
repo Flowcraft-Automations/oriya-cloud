@@ -6,7 +6,8 @@ import { Plus, Trash2 } from "lucide-react";
 import { PageHeader, ActionButton } from "@/components/shell/PageHeader";
 import { OCard } from "@/components/ui-oriya/Card";
 import { listLeads, createLead, updateLeadStage, deleteLead } from "@/lib/data.functions";
-import { sourceLabel, stageLabel, type Lead, type LeadSource, type LeadStage } from "@/lib/types";
+import { sourceLabel, stageLabel, sourceTone, type Lead, type LeadSource, type LeadStage } from "@/lib/types";
+import { TonePill } from "@/components/detail/DetailLayout";
 
 export const Route = createFileRoute("/_authenticated/leads/")({
   head: () => ({
@@ -93,8 +94,9 @@ function LeadsPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{l.full_name}</div>
-                        <div className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                          {sourceLabel[l.source as LeadSource]} {l.interest && `· ${l.interest}`}
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                          <TonePill label={sourceLabel[l.source as LeadSource]} tone={sourceTone[l.source as LeadSource] ?? "neutral"} />
+                          {l.interest && <span>· {l.interest}</span>}
                         </div>
                         {l.phone && <div className="ltr-num mt-0.5 text-[11px]" style={{ color: "var(--text-secondary)" }}>{l.phone}</div>}
                       </div>

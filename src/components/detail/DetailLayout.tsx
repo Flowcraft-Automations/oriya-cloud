@@ -3,14 +3,28 @@ import { ChevronLeft, ChevronRight, Trash2, CheckCircle2 } from "lucide-react";
 
 export type DetailTab = { key: string; label: string; count?: number };
 
-type Tone = "success" | "info" | "gold" | "neutral" | "danger";
+export type Tone = "success" | "info" | "gold" | "neutral" | "danger" | "purple" | "warning";
 const toneStyles: Record<Tone, { fg: string; bg: string; bd: string }> = {
   success: { fg: "var(--success)", bg: "var(--success-bg)", bd: "var(--success)" },
   info: { fg: "var(--info)", bg: "var(--info-bg)", bd: "var(--info)" },
   gold: { fg: "var(--gold-600)", bg: "var(--gold-100)", bd: "var(--gold-600)" },
   neutral: { fg: "var(--text-secondary)", bg: "var(--bg-subtle)", bd: "var(--border)" },
   danger: { fg: "var(--danger)", bg: "var(--danger-bg)", bd: "var(--danger)" },
+  purple: { fg: "var(--ch-tzimmerer)", bg: "#F2ECFB", bd: "var(--ch-tzimmerer)" },
+  warning: { fg: "var(--warning)", bg: "var(--warning-bg)", bd: "var(--warning)" },
 };
+
+export function TonePill({ label, tone }: { label: string; tone: Tone }) {
+  const s = toneStyles[tone];
+  return (
+    <span
+      className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium"
+      style={{ borderColor: s.bd, color: s.fg, backgroundColor: s.bg }}
+    >
+      {label}
+    </span>
+  );
+}
 
 export function DetailLayout({
   kicker,
@@ -42,10 +56,16 @@ export function DetailLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-[1200px]">
-      {/* Top strip */}
+    <div className="mx-auto max-w-[1200px]" dir="rtl">
+      {/* Top strip — kicker on right (start), actions on left (end) */}
       <div className="mb-2 flex items-center justify-between text-sm" style={{ color: "var(--text-secondary)" }}>
+        {kicker ? <div className="text-[11px] tracking-widest">{kicker}</div> : <div />}
         <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: "var(--success)" }}>
+            <CheckCircle2 size={14} /> {verifiedLabel}
+          </span>
+          <button className="rounded p-1 hover:bg-[var(--bg-subtle)]" aria-label="הקודם"><ChevronRight size={16} /></button>
+          <button className="rounded p-1 hover:bg-[var(--bg-subtle)]" aria-label="הבא"><ChevronLeft size={16} /></button>
           {onDelete && (
             <button onClick={onDelete}
               className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
@@ -53,40 +73,32 @@ export function DetailLayout({
               <Trash2 size={12} /> מחק
             </button>
           )}
-          <button className="rounded p-1 hover:bg-[var(--bg-subtle)]" aria-label="הקודם"><ChevronRight size={16} /></button>
-          <button className="rounded p-1 hover:bg-[var(--bg-subtle)]" aria-label="הבא"><ChevronLeft size={16} /></button>
-          <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: "var(--success)" }}>
-            <CheckCircle2 size={14} /> {verifiedLabel}
-          </span>
         </div>
-        {kicker && <div className="text-[11px] tracking-widest">{kicker}</div>}
       </div>
 
-      {/* Title row */}
-      <div className="flex items-start justify-between gap-4 border-b pb-4" style={{ borderColor: "var(--border)" }}>
-        <div className="flex items-center gap-2">
-          {statusPill && (
-            <span className="rounded-full border px-3 py-1 text-xs font-medium"
-              style={{
-                borderColor: toneStyles[statusPill.tone].bd,
-                color: toneStyles[statusPill.tone].fg,
-                backgroundColor: toneStyles[statusPill.tone].bg,
-              }}>
-              {statusPill.label}
-            </span>
-          )}
-          {flag && <span className="text-lg">{flag}</span>}
-        </div>
+      {/* Title row — title + pill + flag together on right (start) */}
+      <div className="flex items-center gap-3 border-b pb-4" style={{ borderColor: "var(--border)" }}>
         <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>{title}</h1>
+        {statusPill && (
+          <span className="rounded-full border px-3 py-1 text-xs font-medium"
+            style={{
+              borderColor: toneStyles[statusPill.tone].bd,
+              color: toneStyles[statusPill.tone].fg,
+              backgroundColor: toneStyles[statusPill.tone].bg,
+            }}>
+            {statusPill.label}
+          </span>
+        )}
+        {flag && <span className="text-lg">{flag}</span>}
       </div>
 
-      {toolbar && <div className="mt-4 flex flex-wrap items-center justify-end gap-2">{toolbar}</div>}
-      {tags && <div className="mt-3 flex flex-wrap items-center justify-end gap-2">{tags}</div>}
+      {toolbar && <div className="mt-4 flex flex-wrap items-center gap-2">{toolbar}</div>}
+      {tags && <div className="mt-3 flex flex-wrap items-center gap-2">{tags}</div>}
 
-      {/* Tabs bar */}
+      {/* Tabs bar — first tab on right in RTL */}
       <div className="mt-5 rounded-t-lg border border-b-0 bg-[var(--bg-subtle)] px-1 pt-1"
         style={{ borderColor: "var(--border)" }}>
-        <div className="flex flex-row-reverse flex-wrap items-end gap-1">
+        <div className="flex flex-wrap items-end gap-1">
           {tabs.map((t) => {
             const active = activeTab === t.key;
             return (

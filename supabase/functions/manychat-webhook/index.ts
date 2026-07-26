@@ -12,6 +12,7 @@ const cors = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const FALLBACK_OWNER_ID = Deno.env.get("ORYA_DEMO_OWNER_ID") ?? "f1a4c930-d248-42fa-8d3f-4c18ac6559b8";
 
 const rank = { cold: 0, warm: 1, hot: 2 } as const;
 type Warmth = keyof typeof rank;
@@ -19,6 +20,11 @@ type Warmth = keyof typeof rank;
 function digits(s: any): string | null {
   const d = String(s ?? "").replace(/\D/g, "");
   return d.length ? d : null;
+}
+
+async function resolveOwnerId(sb: ReturnType<typeof createClient>): Promise<string> {
+  const { data } = await sb.from("leads").select("owner_id").limit(1).maybeSingle();
+  return data?.owner_id ?? FALLBACK_OWNER_ID;
 }
 
 Deno.serve(async (req) => {
@@ -48,6 +54,7 @@ Deno.serve(async (req) => {
   const lastTextStr = lastText != null ? String(lastText).trim() : null;
 
   const sb = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  const owner_id = await resolveOwnerId(sb);
 
   const { data: existing } = await sb.from("leads").select("id, warmth, full_name").eq("phone", phone).maybeSingle();
 
@@ -60,7 +67,7 @@ Deno.serve(async (req) => {
 
   if (!leadId) {
     const { data: ins, error } = await sb.from("leads").insert({
-      full_name, phone, source: "whatsapp", stage: "new",
+      owner_id, full_name, phone, source: "whatsapp", stage: "new",
       warmth: merged, bot_stage: stage, last_bot_event_at: now,
     }).select("id").single();
     if (error) return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500, headers: { ...cors, "content-type": "application/json" } });
@@ -74,7 +81,7 @@ Deno.serve(async (req) => {
   // Log stage progression + last text input.
   if (stage || lastTextStr) {
     await sb.from("lead_inquiries").insert({
-      lead_id: leadId, source: "whatsapp",
+      owner_id, lead_id: leadId, source: "whatsapp",
       bot_stage: stage, bot_event: `warmth:${merged}`,
       message: lastTextStr,
     });

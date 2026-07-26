@@ -88,13 +88,30 @@ Deno.serve(async (req) => {
     await sb.from("leads").update(patch).eq("id", leadId);
   }
 
-  // Log stage progression + last text input.
+  // One inquiry per bot session: "welcome" opens a new inquiry; later stages update the latest one.
   if (stage || lastTextStr) {
-    await sb.from("lead_inquiries").insert({
-      owner_id, lead_id: leadId, source: "whatsapp",
-      bot_stage: stage, bot_event: `warmth:${merged}`,
-      message: lastTextStr,
-    });
+    const isWelcome = key === "welcome";
+    const { data: latest } = await sb.from("lead_inquiries")
+      .select("id, message, bot_stage")
+      .eq("lead_id", leadId).eq("source", "whatsapp")
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+
+    if (!latest || isWelcome) {
+      await sb.from("lead_inquiries").insert({
+        owner_id, lead_id: leadId, source: "whatsapp",
+        bot_stage: stage, bot_event: `warmth:${merged}`,
+        message: lastTextStr,
+      });
+    } else {
+      const prevMsg = (latest.message as string | null) ?? "";
+      const line = [stage ? `[${stage}]` : null, lastTextStr].filter(Boolean).join(" ");
+      const nextMsg = line ? (prevMsg ? `${prevMsg}\n${line}` : line) : prevMsg;
+      await sb.from("lead_inquiries").update({
+        bot_stage: stage ?? latest.bot_stage,
+        bot_event: `warmth:${merged}`,
+        message: nextMsg || null,
+      }).eq("id", latest.id);
+    }
   }
 
   return new Response(JSON.stringify({ ok: true, lead_id: leadId, warmth: merged, bot_stage: stage }), {

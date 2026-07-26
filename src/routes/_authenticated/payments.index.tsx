@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { FilterChips } from "@/components/shell/FilterChips";
+import { MiniStatFilters } from "@/components/shell/MiniStatFilters";
 import { listInvoices } from "@/lib/data.functions";
 import { invoiceStatusPill } from "@/components/detail/InvoicesTable";
 
@@ -12,18 +12,15 @@ export const Route = createFileRoute("/_authenticated/payments/")({
   component: PaymentsPage,
 });
 
-const chips = [
-  { key: "all", label: "הכל" },
-  { key: "draft", label: "טיוטה" },
-  { key: "sent", label: "נשלח" },
-  { key: "paid", label: "שולם" },
-  { key: "overdue", label: "בפיגור" },
-  { key: "cancelled", label: "בוטל" },
-];
+import type { Tone } from "@/lib/types";
 
 const statusLabel: Record<string, string> = {
   draft: "טיוטה", sent: "נשלח", paid: "שולם", overdue: "בפיגור", cancelled: "בוטל",
 };
+const statusToneMap: Record<string, Tone> = {
+  draft: "neutral", sent: "info", paid: "success", overdue: "danger", cancelled: "warning",
+};
+const statusOrder = ["draft", "sent", "paid", "overdue", "cancelled"];
 
 function PaymentsPage() {
   const nav = useNavigate();
@@ -39,15 +36,24 @@ function PaymentsPage() {
 
   return (
     <>
-      <PageHeader title="תשלומים" subtitle="חשבוניות והכנסות" />
+      <PageHeader
+        title="תשלומים"
+        subtitle={`שולם ₪${totalPaid.toLocaleString()} · יתרת גבייה ₪${totalOutstanding.toLocaleString()}`}
+      />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <StatCard label="שולם החודש" value={`₪${totalPaid.toLocaleString()}`} tone="success" />
-        <StatCard label="יתרת גבייה" value={`₪${totalOutstanding.toLocaleString()}`} tone="warning" />
-        <StatCard label="סה״כ חשבוניות" value={String(q.data.length)} tone="info" />
-      </div>
-
-      <FilterChips chips={chips} value={filter} onChange={setFilter} />
+      <MiniStatFilters
+        value={filter}
+        onChange={setFilter}
+        stats={[
+          { key: "all", label: "סה״כ", count: q.data.length, tone: "neutral" },
+          ...statusOrder.map((s) => ({
+            key: s,
+            label: statusLabel[s],
+            count: q.data.filter((r) => r.status === s).length,
+            tone: statusToneMap[s],
+          })),
+        ]}
+      />
 
       <div className="mt-4 overflow-hidden rounded-lg border bg-white" style={{ borderColor: "var(--border)" }}>
         {rows.length === 0 ? (
@@ -86,19 +92,5 @@ function PaymentsPage() {
         )}
       </div>
     </>
-  );
-}
-
-function StatCard({ label, value, tone }: { label: string; value: string; tone: "success" | "warning" | "info" }) {
-  const colors = {
-    success: { bg: "var(--success-bg)", fg: "var(--success)" },
-    warning: { bg: "var(--warning-bg, #FEF3C7)", fg: "var(--warning, #B45309)" },
-    info: { bg: "var(--info-bg)", fg: "var(--info)" },
-  }[tone];
-  return (
-    <div className="rounded-lg border p-4" style={{ borderColor: "var(--border)", backgroundColor: "#fff" }}>
-      <div className="text-[11px] uppercase" style={{ color: "var(--text-secondary)" }}>{label}</div>
-      <div className="ltr-num mt-1 text-2xl font-semibold" style={{ color: colors.fg }}>{value}</div>
-    </div>
   );
 }

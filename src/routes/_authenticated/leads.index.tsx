@@ -5,8 +5,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { Plus, Trash2, LayoutGrid, List, ExternalLink, MessageSquare } from "lucide-react";
 import { PageHeader, ActionButton } from "@/components/shell/PageHeader";
 import { OCard } from "@/components/ui-oriya/Card";
+import { MiniStatFilters } from "@/components/shell/MiniStatFilters";
 import { listLeads, createLead, updateLeadStage, updateLead, deleteLead } from "@/lib/data.functions";
-import { sourceLabel, stageLabel, sourceTone, stageTone, type Lead, type LeadSource, type LeadStage } from "@/lib/types";
+import { sourceLabel, stageLabel, sourceTone, stageTone, type Lead, type LeadSource, type LeadStage, type Tone } from "@/lib/types";
 import { TonePill } from "@/components/detail/DetailLayout";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -50,6 +51,7 @@ function LeadsPage() {
   const delM = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: () => qc.invalidateQueries() });
 
   const [view, setView] = useState<"kanban" | "table">("table");
+  const [statFilter, setStatFilter] = useState<string>("all");
 
   useEffect(() => {
     const channel = supabase
@@ -68,6 +70,13 @@ function LeadsPage() {
       setForm({ full_name: "", phone: "", source: "whatsapp", interest: "" });
       setOpen(false);
     },
+  });
+
+  const filteredLeads = q.data.filter((l: Lead) => {
+    if (statFilter === "all") return true;
+    if (statFilter.startsWith("stage:")) return l.stage === statFilter.slice(6);
+    if (statFilter.startsWith("warmth:")) return (l.warmth ?? "cold") === statFilter.slice(7);
+    return true;
   });
 
   return (
@@ -112,9 +121,25 @@ function LeadsPage() {
         </OCard>
       )}
 
+      <MiniStatFilters
+        value={statFilter}
+        onChange={setStatFilter}
+        stats={[
+          { key: "all", label: "כל הלידים", count: q.data.length, tone: "neutral" },
+          { key: "warmth:hot", label: "חמים", count: q.data.filter((l) => (l.warmth ?? "cold") === "hot").length, tone: "danger" },
+          { key: "warmth:warm", label: "פושרים", count: q.data.filter((l) => (l.warmth ?? "cold") === "warm").length, tone: "gold" },
+          ...(stages as LeadStage[]).map((s) => ({
+            key: `stage:${s}`,
+            label: stageLabel[s],
+            count: q.data.filter((l) => l.stage === s).length,
+            tone: stageTone[s] as Tone,
+          })),
+        ]}
+      />
+
       {view === "table" ? (
         <LeadsTable
-          leads={q.data}
+          leads={filteredLeads}
           onOpen={(id) => nav({ to: "/leads/$id", params: { id } })}
           onPatch={(id, patch) => updM.mutate({ id, ...patch })}
           onDelete={(id) => { if (confirm("למחוק?")) delM.mutate(id); }}
@@ -122,7 +147,7 @@ function LeadsPage() {
       ) : (
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
         {stages.map((s) => {
-          const items = q.data.filter((l: Lead) => l.stage === s);
+          const items = filteredLeads.filter((l: Lead) => l.stage === s);
           return (
             <OCard key={s} className="p-3">
               <div className="mb-3 flex items-center justify-between">

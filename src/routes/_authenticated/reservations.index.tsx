@@ -6,9 +6,9 @@ import { Plus, Trash2 } from "lucide-react";
 import { PageHeader, ActionButton } from "@/components/shell/PageHeader";
 import { OCard } from "@/components/ui-oriya/Card";
 import { OBadge } from "@/components/ui-oriya/Badge";
-import { FilterChips } from "@/components/shell/FilterChips";
+import { MiniStatFilters, type MiniStat } from "@/components/shell/MiniStatFilters";
 import { listReservations, listPropertiesWithUnits, deleteReservation } from "@/lib/data.functions";
-import { channelLabel, statusLabel, type Channel, type Reservation, type ReservationStatus } from "@/lib/types";
+import { channelLabel, statusLabel, statusTone, type Channel, type Reservation, type ReservationStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/reservations/")({
   head: () => ({
@@ -49,16 +49,18 @@ function ReservationsPage() {
         subtitle={`${res.data.length} הזמנות סה״כ`}
         action={<ActionButton variant="gold" onClick={() => (window.location.href = "/calendar")}><Plus size={16} />הזמנה חדשה</ActionButton>}
       />
-      <FilterChips
-        chips={[
-          { key: "all", label: `הכול (${res.data.length})` },
-          ...(Object.keys(statusLabel) as ReservationStatus[]).map((s) => ({
-            key: s,
-            label: `${statusLabel[s]} (${res.data.filter((r) => r.status === s).length})`,
-          })),
-        ]}
+      <MiniStatFilters
         value={statusFilter}
         onChange={(k) => setStatusFilter(k as typeof statusFilter)}
+        stats={[
+          { key: "all", label: "סה״כ הזמנות", count: res.data.length, tone: "neutral" },
+          ...(Object.keys(statusLabel) as ReservationStatus[]).map<MiniStat>((s) => ({
+            key: s,
+            label: statusLabel[s],
+            count: res.data.filter((r) => r.status === s).length,
+            tone: statusTone[s],
+          })),
+        ]}
       />
       <OCard className="mt-3 overflow-hidden">
         {rows.length === 0 ? (

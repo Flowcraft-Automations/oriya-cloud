@@ -6,6 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Plus, Trash2 } from "lucide-react";
 import { PageHeader, ActionButton } from "@/components/shell/PageHeader";
 import { OCard } from "@/components/ui-oriya/Card";
+import { MiniStatFilters } from "@/components/shell/MiniStatFilters";
 import { listCustomers, createCustomer, deleteCustomer } from "@/lib/data.functions";
 import type { Customer } from "@/lib/types";
 
@@ -27,6 +28,7 @@ function CustomersPage() {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [q2, setQ2] = useState("");
+  const [statFilter, setStatFilter] = useState<string>("all");
   const list = useServerFn(listCustomers);
   const create = useServerFn(createCustomer);
   const del = useServerFn(deleteCustomer);
@@ -39,9 +41,24 @@ function CustomersPage() {
     onSuccess: () => { qc.invalidateQueries(); setForm({ full_name: "", phone: "", email: "" }); setOpen(false); },
   });
 
+  const now = Date.now();
+  const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+  const matchesStat = (c: Customer) => {
+    if (statFilter === "all") return true;
+    if (statFilter === "phone") return !!c.phone;
+    if (statFilter === "email") return !!c.email;
+    if (statFilter === "missing") return !c.phone || !c.email;
+    if (statFilter === "recent") return c.created_at && now - new Date(c.created_at).getTime() <= thirtyDays;
+    return true;
+  };
   const rows = q.data.filter((c: Customer) =>
-    !q2 || c.full_name.includes(q2) || c.phone?.includes(q2) || c.email?.includes(q2)
+    matchesStat(c) && (!q2 || c.full_name.includes(q2) || c.phone?.includes(q2) || c.email?.includes(q2))
   );
+
+  const withPhone = q.data.filter((c) => !!c.phone).length;
+  const withEmail = q.data.filter((c) => !!c.email).length;
+  const missing = q.data.filter((c) => !c.phone || !c.email).length;
+  const recent = q.data.filter((c) => c.created_at && now - new Date(c.created_at).getTime() <= thirtyDays).length;
 
   return (
     <>
@@ -49,6 +66,18 @@ function CustomersPage() {
         title="לקוחות"
         subtitle={`${q.data.length} לקוחות בבסיס`}
         action={<ActionButton variant="gold" onClick={() => setOpen(!open)}><Plus size={16} />לקוח חדש</ActionButton>}
+      />
+
+      <MiniStatFilters
+        value={statFilter}
+        onChange={setStatFilter}
+        stats={[
+          { key: "all", label: "כל הלקוחות", count: q.data.length, tone: "neutral" },
+          { key: "recent", label: "חדשים 30 יום", count: recent, tone: "info" },
+          { key: "phone", label: "עם טלפון", count: withPhone, tone: "success" },
+          { key: "email", label: "עם אימייל", count: withEmail, tone: "gold" },
+          { key: "missing", label: "חסר פרטים", count: missing, tone: "warning" },
+        ]}
       />
 
       {open && (

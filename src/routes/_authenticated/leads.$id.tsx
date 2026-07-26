@@ -41,7 +41,9 @@ function LeadDetailPage() {
   });
 
   const [notes, setNotes] = useState(lead.notes ?? "");
-  const [newInq, setNewInq] = useState({ source: lead.source, unit_id: "", check_in: "", check_out: "", guests: "", message: "" });
+  const [newInq, setNewInq] = useState<{ source: string; unit_id: string; check_in: string; check_out: string; guests: string; message: string }>({
+    source: lead.source as string, unit_id: "", check_in: "", check_out: "", guests: "", message: "",
+  });
   const [commBody, setCommBody] = useState("");
   const [commChannel, setCommChannel] = useState<"whatsapp" | "email">("whatsapp");
 

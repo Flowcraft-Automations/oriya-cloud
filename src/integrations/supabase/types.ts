@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaigns: {
+        Row: {
+          coupon_code: string | null
+          created_at: string
+          id: string
+          launched_at: string | null
+          name_he: string
+          owner_id: string | null
+          scheduled_at: string | null
+          segment: Json
+          stats: Json
+          status: Database["public"]["Enums"]["campaign_status"]
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          coupon_code?: string | null
+          created_at?: string
+          id?: string
+          launched_at?: string | null
+          name_he: string
+          owner_id?: string | null
+          scheduled_at?: string | null
+          segment?: Json
+          stats?: Json
+          status?: Database["public"]["Enums"]["campaign_status"]
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          coupon_code?: string | null
+          created_at?: string
+          id?: string
+          launched_at?: string | null
+          name_he?: string
+          owner_id?: string | null
+          scheduled_at?: string | null
+          segment?: Json
+          stats?: Json
+          status?: Database["public"]["Enums"]["campaign_status"]
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "wa_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communications: {
         Row: {
           body: string | null
@@ -59,13 +112,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "communications_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "marketing_campaigns"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "communications_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
@@ -81,6 +127,67 @@ export type Database = {
           },
         ]
       }
+      contact_consent: {
+        Row: {
+          customer_id: string
+          opted_in: boolean
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          customer_id: string
+          opted_in?: boolean
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          customer_id?: string
+          opted_in?: boolean
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_consent_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_tags: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          source: string
+          tag: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          source?: string
+          tag: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          source?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_tags_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string
@@ -88,6 +195,8 @@ export type Database = {
           full_name: string
           id: string
           id_number: string | null
+          lifecycle: string | null
+          manychat_id: string | null
           notes: string | null
           owner_id: string
           phone: string | null
@@ -100,6 +209,8 @@ export type Database = {
           full_name: string
           id?: string
           id_number?: string | null
+          lifecycle?: string | null
+          manychat_id?: string | null
           notes?: string | null
           owner_id: string
           phone?: string | null
@@ -112,6 +223,8 @@ export type Database = {
           full_name?: string
           id?: string
           id_number?: string | null
+          lifecycle?: string | null
+          manychat_id?: string | null
           notes?: string | null
           owner_id?: string
           phone?: string | null
@@ -179,6 +292,64 @@ export type Database = {
           },
           {
             foreignKeyName: "invoices_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journey_enrollments: {
+        Row: {
+          created_at: string
+          current_step_code: string | null
+          customer_id: string
+          exited_reason: string | null
+          id: string
+          journey_id: string
+          paused_until: string | null
+          reservation_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_step_code?: string | null
+          customer_id: string
+          exited_reason?: string | null
+          id?: string
+          journey_id: string
+          paused_until?: string | null
+          reservation_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_step_code?: string | null
+          customer_id?: string
+          exited_reason?: string | null
+          id?: string
+          journey_id?: string
+          paused_until?: string | null
+          reservation_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journey_enrollments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journey_enrollments_journey_id_fkey"
+            columns: ["journey_id"]
+            isOneToOne: false
+            referencedRelation: "wa_journeys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journey_enrollments_reservation_id_fkey"
             columns: ["reservation_id"]
             isOneToOne: false
             referencedRelation: "reservations"
@@ -333,47 +504,95 @@ export type Database = {
           },
         ]
       }
-      marketing_campaigns: {
+      messages_log: {
         Row: {
-          budget: number
-          channel: string
+          campaign_id: string | null
           created_at: string
-          end_date: string | null
+          customer_id: string | null
+          delivered_at: string | null
+          direction: Database["public"]["Enums"]["msg_direction"]
+          error: string | null
           id: string
-          name: string
-          notes: string | null
-          owner_id: string
-          start_date: string | null
-          status: string
-          updated_at: string
+          journey_step_id: string | null
+          payload: Json
+          phone: string | null
+          read_at: string | null
+          replied_at: string | null
+          reservation_id: string | null
+          status: Database["public"]["Enums"]["msg_status"]
+          template_id: string | null
         }
         Insert: {
-          budget?: number
-          channel?: string
+          campaign_id?: string | null
           created_at?: string
-          end_date?: string | null
+          customer_id?: string | null
+          delivered_at?: string | null
+          direction?: Database["public"]["Enums"]["msg_direction"]
+          error?: string | null
           id?: string
-          name: string
-          notes?: string | null
-          owner_id: string
-          start_date?: string | null
-          status?: string
-          updated_at?: string
+          journey_step_id?: string | null
+          payload?: Json
+          phone?: string | null
+          read_at?: string | null
+          replied_at?: string | null
+          reservation_id?: string | null
+          status?: Database["public"]["Enums"]["msg_status"]
+          template_id?: string | null
         }
         Update: {
-          budget?: number
-          channel?: string
+          campaign_id?: string | null
           created_at?: string
-          end_date?: string | null
+          customer_id?: string | null
+          delivered_at?: string | null
+          direction?: Database["public"]["Enums"]["msg_direction"]
+          error?: string | null
           id?: string
-          name?: string
-          notes?: string | null
-          owner_id?: string
-          start_date?: string | null
-          status?: string
-          updated_at?: string
+          journey_step_id?: string | null
+          payload?: Json
+          phone?: string | null
+          read_at?: string | null
+          replied_at?: string | null
+          reservation_id?: string | null
+          status?: Database["public"]["Enums"]["msg_status"]
+          template_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "messages_log_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_log_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_log_journey_step_id_fkey"
+            columns: ["journey_step_id"]
+            isOneToOne: false
+            referencedRelation: "wa_journey_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_log_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_log_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "wa_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       properties: {
         Row: {
@@ -458,6 +677,7 @@ export type Database = {
           channel: Database["public"]["Enums"]["reservation_channel"]
           check_in: string
           check_out: string
+          checkin_code: string | null
           children: number
           created_at: string
           customer_id: string | null
@@ -480,6 +700,7 @@ export type Database = {
           channel?: Database["public"]["Enums"]["reservation_channel"]
           check_in: string
           check_out: string
+          checkin_code?: string | null
           children?: number
           created_at?: string
           customer_id?: string | null
@@ -502,6 +723,7 @@ export type Database = {
           channel?: Database["public"]["Enums"]["reservation_channel"]
           check_in?: string
           check_out?: string
+          checkin_code?: string | null
           children?: number
           created_at?: string
           customer_id?: string | null
@@ -580,6 +802,132 @@ export type Database = {
           },
         ]
       }
+      wa_journey_steps: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          journey_id: string
+          mode: Database["public"]["Enums"]["wa_send_mode"]
+          name_he: string
+          order_index: number
+          step_code: string
+          template_id: string | null
+          trigger_he: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          journey_id: string
+          mode?: Database["public"]["Enums"]["wa_send_mode"]
+          name_he: string
+          order_index: number
+          step_code: string
+          template_id?: string | null
+          trigger_he: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          journey_id?: string
+          mode?: Database["public"]["Enums"]["wa_send_mode"]
+          name_he?: string
+          order_index?: number
+          step_code?: string
+          template_id?: string | null
+          trigger_he?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_journey_steps_journey_id_fkey"
+            columns: ["journey_id"]
+            isOneToOne: false
+            referencedRelation: "wa_journeys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_journey_steps_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "wa_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_journeys: {
+        Row: {
+          created_at: string
+          description_he: string | null
+          id: string
+          is_active: boolean
+          key: Database["public"]["Enums"]["journey_key"]
+          name_he: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description_he?: string | null
+          id?: string
+          is_active?: boolean
+          key: Database["public"]["Enums"]["journey_key"]
+          name_he: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description_he?: string | null
+          id?: string
+          is_active?: boolean
+          key?: Database["public"]["Enums"]["journey_key"]
+          name_he?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      wa_templates: {
+        Row: {
+          body_he: string
+          category: Database["public"]["Enums"]["wa_template_category"]
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          status: Database["public"]["Enums"]["wa_template_status"]
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          body_he: string
+          category: Database["public"]["Enums"]["wa_template_category"]
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["wa_template_status"]
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          body_he?: string
+          category?: Database["public"]["Enums"]["wa_template_category"]
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["wa_template_status"]
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -588,6 +936,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      campaign_status: "draft" | "scheduled" | "running" | "done" | "cancelled"
+      journey_key: "leads" | "clients"
       lead_source:
         | "whatsapp"
         | "website"
@@ -596,6 +946,14 @@ export type Database = {
         | "referral"
         | "other"
       lead_stage: "new" | "contacted" | "quoted" | "booked" | "lost"
+      msg_direction: "out" | "in"
+      msg_status:
+        | "queued"
+        | "sent"
+        | "delivered"
+        | "read"
+        | "failed"
+        | "replied"
       reservation_channel:
         | "booking"
         | "direct"
@@ -609,6 +967,9 @@ export type Database = {
         | "checkin"
         | "checkout"
         | "cancelled"
+      wa_send_mode: "in_window" | "template"
+      wa_template_category: "utility" | "marketing"
+      wa_template_status: "draft" | "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -736,6 +1097,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      campaign_status: ["draft", "scheduled", "running", "done", "cancelled"],
+      journey_key: ["leads", "clients"],
       lead_source: [
         "whatsapp",
         "website",
@@ -745,6 +1108,8 @@ export const Constants = {
         "other",
       ],
       lead_stage: ["new", "contacted", "quoted", "booked", "lost"],
+      msg_direction: ["out", "in"],
+      msg_status: ["queued", "sent", "delivered", "read", "failed", "replied"],
       reservation_channel: [
         "booking",
         "direct",
@@ -760,6 +1125,9 @@ export const Constants = {
         "checkout",
         "cancelled",
       ],
+      wa_send_mode: ["in_window", "template"],
+      wa_template_category: ["utility", "marketing"],
+      wa_template_status: ["draft", "pending", "approved", "rejected"],
     },
   },
 } as const

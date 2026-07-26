@@ -46,6 +46,42 @@ export const stageLabel: Record<LeadStage, string> = {
   lost: "אבוד",
 };
 
+export type Tone = "success" | "info" | "gold" | "neutral" | "danger" | "purple" | "warning";
+
+export const sourceTone: Record<LeadSource, Tone> = {
+  whatsapp: "success",
+  website: "info",
+  tzimmerer: "purple",
+  instagram: "gold",
+  referral: "warning",
+  other: "neutral",
+};
+
+export const stageTone: Record<LeadStage, Tone> = {
+  new: "info",
+  contacted: "gold",
+  quoted: "warning",
+  booked: "success",
+  lost: "danger",
+};
+
+export const statusTone: Record<ReservationStatus, Tone> = {
+  pending: "info",
+  confirmed: "success",
+  checkin: "gold",
+  checkout: "neutral",
+  cancelled: "danger",
+};
+
+export const channelTone: Record<Channel, Tone> = {
+  booking: "info",
+  direct: "gold",
+  tzimmerer: "purple",
+  airbnb: "danger",
+  vrbo: "warning",
+  block: "neutral",
+};
+
 export type Property = { id: string; name: string; address: string | null; notes: string | null };
 export type Unit = {
   id: string;

@@ -99,7 +99,7 @@ export function MarketingPanel({ mode, customerId, phone, displayName }: Props) 
     { queued: 0, sent: 0, delivered: 0, read: 0, replied: 0, failed: 0 },
   );
 
-  const optedOut = customerId && consentQ.data && consentQ.data.opted_in === false;
+  const optedOut = !!(customerId && consentQ.data && consentQ.data.opted_in === false);
 
   return (
     <div className="space-y-6" dir="rtl">

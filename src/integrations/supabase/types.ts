@@ -359,6 +359,8 @@ export type Database = {
       }
       lead_inquiries: {
         Row: {
+          bot_event: string | null
+          bot_stage: string | null
           check_in: string | null
           check_out: string | null
           created_at: string
@@ -372,6 +374,7 @@ export type Database = {
           nights: number | null
           owner_id: string
           page_url: string | null
+          payload: Json | null
           phone: string | null
           property_id: string | null
           referrer: string | null
@@ -382,6 +385,8 @@ export type Database = {
           utm_source: string | null
         }
         Insert: {
+          bot_event?: string | null
+          bot_stage?: string | null
           check_in?: string | null
           check_out?: string | null
           created_at?: string
@@ -395,6 +400,7 @@ export type Database = {
           nights?: number | null
           owner_id: string
           page_url?: string | null
+          payload?: Json | null
           phone?: string | null
           property_id?: string | null
           referrer?: string | null
@@ -405,6 +411,8 @@ export type Database = {
           utm_source?: string | null
         }
         Update: {
+          bot_event?: string | null
+          bot_stage?: string | null
           check_in?: string | null
           check_out?: string | null
           created_at?: string
@@ -418,6 +426,7 @@ export type Database = {
           nights?: number | null
           owner_id?: string
           page_url?: string | null
+          payload?: Json | null
           phone?: string | null
           property_id?: string | null
           referrer?: string | null
@@ -453,11 +462,13 @@ export type Database = {
       }
       leads: {
         Row: {
+          bot_stage: string | null
           created_at: string
           email: string | null
           full_name: string
           id: string
           interest: string | null
+          last_bot_event_at: string | null
           notes: string | null
           owner_id: string
           phone: string | null
@@ -465,13 +476,16 @@ export type Database = {
           source: Database["public"]["Enums"]["lead_source"]
           stage: Database["public"]["Enums"]["lead_stage"]
           updated_at: string
+          warmth: string
         }
         Insert: {
+          bot_stage?: string | null
           created_at?: string
           email?: string | null
           full_name: string
           id?: string
           interest?: string | null
+          last_bot_event_at?: string | null
           notes?: string | null
           owner_id: string
           phone?: string | null
@@ -479,13 +493,16 @@ export type Database = {
           source?: Database["public"]["Enums"]["lead_source"]
           stage?: Database["public"]["Enums"]["lead_stage"]
           updated_at?: string
+          warmth?: string
         }
         Update: {
+          bot_stage?: string | null
           created_at?: string
           email?: string | null
           full_name?: string
           id?: string
           interest?: string | null
+          last_bot_event_at?: string | null
           notes?: string | null
           owner_id?: string
           phone?: string | null
@@ -493,6 +510,7 @@ export type Database = {
           source?: Database["public"]["Enums"]["lead_source"]
           stage?: Database["public"]["Enums"]["lead_stage"]
           updated_at?: string
+          warmth?: string
         }
         Relationships: [
           {

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
@@ -6,13 +7,15 @@ import { UserPlus, Inbox, TrendingUp, MessageSquare } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { OCard, OCardBody, OCardHeader, OCardTitle } from "@/components/ui-oriya/Card";
 import { TonePill } from "@/components/detail/DetailLayout";
-import { getLeadsDashboard } from "@/lib/data.functions";
+import { getLeadsDashboard, type DrillKey } from "@/lib/data.functions";
+import { KpiDrillDrawer } from "@/components/dashboard/KpiDrillDrawer";
 import { sourceLabel, sourceTone, stageLabel, stageTone, type LeadSource, type LeadStage } from "@/lib/types";
 
 export function LeadsTab() {
   const fn = useServerFn(getLeadsDashboard);
   const { data } = useSuspenseQuery({ queryKey: ["dash-leads"], queryFn: () => fn() });
   const nav = useNavigate();
+  const [drill, setDrill] = useState<DrillKey | null>(null);
 
   const funnelData = data.funnel.map((f) => ({ ...f, label: stageLabel[f.stage as LeadStage] }));
   const stageColor: Record<LeadStage, string> = {
@@ -22,11 +25,11 @@ export function LeadsTab() {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <KpiCard label="לידים חדשים החודש" value={data.kpis.newThisMonth} sub={`${data.kpis.totalLeads} סה״כ`} icon={UserPlus} tone="navy" />
-        <KpiCard label="לידים פתוחים" value={data.kpis.open} sub="בטיפול" icon={Inbox} tone="navy" />
-        <KpiCard label="שיעור המרה" value={`${data.kpis.conversionPct}%`} sub={`${data.kpis.booked} הוזמנו`} icon={TrendingUp} tone="gold" />
-        <KpiCard label="פניות השבוע" value={data.kpis.inquiriesThisWeek} sub="לטופס האתר" icon={MessageSquare} tone="navy" />
-        <KpiCard label="סה״כ פניות" value={data.recentInquiries.length > 0 ? data.recentInquiries.length + "+" : "0"} sub="בהיסטוריה" icon={MessageSquare} tone="navy" />
+        <KpiCard label="לידים חדשים החודש" value={data.kpis.newThisMonth} sub={`${data.kpis.totalLeads} סה״כ`} icon={UserPlus} tone="navy" onClick={() => setDrill("new_leads_month")} />
+        <KpiCard label="לידים פתוחים" value={data.kpis.open} sub="בטיפול" icon={Inbox} tone="navy" onClick={() => setDrill("open_leads")} />
+        <KpiCard label="שיעור המרה" value={`${data.kpis.conversionPct}%`} sub={`${data.kpis.booked} הוזמנו`} icon={TrendingUp} tone="gold" onClick={() => setDrill("conversion")} />
+        <KpiCard label="פניות השבוע" value={data.kpis.inquiriesThisWeek} sub="לטופס האתר" icon={MessageSquare} tone="navy" onClick={() => setDrill("inquiries_week")} />
+        <KpiCard label="סה״כ פניות" value={data.recentInquiries.length > 0 ? data.recentInquiries.length + "+" : "0"} sub="בהיסטוריה" icon={MessageSquare} tone="navy" onClick={() => setDrill("total_inquiries")} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -139,6 +142,7 @@ export function LeadsTab() {
           </ul>
         </OCardBody>
       </OCard>
+      <KpiDrillDrawer drillKey={drill} onClose={() => setDrill(null)} />
     </div>
   );
 }

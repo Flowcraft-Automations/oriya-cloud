@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Mail, MessageCircle, Plus, ExternalLink, Globe } from "lucide-react";
 import { getLeadDetail, updateLead, deleteLead, addLeadInquiry, listPropertiesWithUnits } from "@/lib/data.functions";
 import { sourceLabel, stageLabel, sourceTone, stageTone, type LeadSource, type LeadStage } from "@/lib/types";
-import { DetailLayout, SectionBar, FieldRow, EmptyState, TonePill } from "@/components/detail/DetailLayout";
+import { DetailLayout, SectionBar, FieldRow, EditableRow, EmptyState, TonePill } from "@/components/detail/DetailLayout";
 
 export const Route = createFileRoute("/_authenticated/leads/$id")({
   head: () => ({ meta: [{ title: "כרטיס ליד · Oriya OS" }] }),
@@ -73,28 +73,24 @@ function LeadDetailPage() {
       {tab === "profile" && (
         <div className="divide-y" style={{ borderColor: "var(--border)" }}>
           <SectionBar title="זהות" accent="var(--gold-100)" barColor="var(--gold-500)">
-            <FieldRow label="שם מלא" value={lead.full_name} />
-            <FieldRow label="אימייל" value={lead.email} ltr />
-            <FieldRow label="טלפון" value={lead.phone} ltr />
+            <EditableRow label="שם מלא" value={lead.full_name} onSave={(v) => updM.mutate({ full_name: v })} />
+            <EditableRow label="אימייל" type="email" ltr value={lead.email} onSave={(v) => updM.mutate({ email: v })} />
+            <EditableRow label="טלפון" type="tel" ltr value={lead.phone} onSave={(v) => updM.mutate({ phone: v })} />
           </SectionBar>
           <SectionBar title="מקור וסטטוס" accent="var(--info-bg)" barColor="var(--info)">
-            <FieldRow label="מקור" value={sourceLabel[lead.source as LeadSource]} />
-            <div className="flex items-center justify-between gap-6 px-5 py-3">
-              <select value={lead.stage} onChange={(e) => updM.mutate({ stage: e.target.value as LeadStage })}
-                className="rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }}>
-                {(Object.keys(stageLabel) as LeadStage[]).map((s) => <option key={s} value={s}>{stageLabel[s]}</option>)}
-              </select>
-              <div className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>שלב</div>
-            </div>
-            <FieldRow label="עניין" value={lead.interest} />
+            <EditableRow label="מקור" type="select" value={lead.source}
+              options={(Object.keys(sourceLabel) as LeadSource[]).map((s) => ({ value: s, label: sourceLabel[s] }))}
+              display={<TonePill label={sourceLabel[lead.source as LeadSource]} tone={sourceTone[lead.source as LeadSource] ?? "neutral"} />}
+              onSave={(v) => updM.mutate({ source: v as LeadSource })} />
+            <EditableRow label="שלב" type="select" value={lead.stage}
+              options={(Object.keys(stageLabel) as LeadStage[]).map((s) => ({ value: s, label: stageLabel[s] }))}
+              display={<TonePill label={stageLabel[lead.stage as LeadStage]} tone={stageTone[lead.stage as LeadStage] ?? "neutral"} />}
+              onSave={(v) => updM.mutate({ stage: v as LeadStage })} />
+            <EditableRow label="עניין" value={lead.interest} onSave={(v) => updM.mutate({ interest: v })} />
             <FieldRow label="נוצר" value={new Date(lead.created_at).toLocaleDateString("he-IL")} />
           </SectionBar>
           <SectionBar title="הערות" accent="var(--bg-subtle)" barColor="var(--border)">
-            <div className="p-4">
-              <textarea rows={4} defaultValue={lead.notes ?? ""}
-                onBlur={(e) => e.target.value !== (lead.notes ?? "") && updM.mutate({ notes: e.target.value })}
-                className="w-full rounded-md border p-3 text-sm" style={{ borderColor: "var(--border)" }} />
-            </div>
+            <EditableRow label="הערות" type="textarea" value={lead.notes} onSave={(v) => updM.mutate({ notes: v })} />
           </SectionBar>
         </div>
       )}

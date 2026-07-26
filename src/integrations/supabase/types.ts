@@ -475,6 +475,7 @@ export type Database = {
           id: string
           interest: string | null
           last_bot_event_at: string | null
+          manychat_subscriber_id: string | null
           notes: string | null
           owner_id: string
           phone: string | null
@@ -492,6 +493,7 @@ export type Database = {
           id?: string
           interest?: string | null
           last_bot_event_at?: string | null
+          manychat_subscriber_id?: string | null
           notes?: string | null
           owner_id: string
           phone?: string | null
@@ -509,6 +511,7 @@ export type Database = {
           id?: string
           interest?: string | null
           last_bot_event_at?: string | null
+          manychat_subscriber_id?: string | null
           notes?: string | null
           owner_id?: string
           phone?: string | null

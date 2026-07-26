@@ -80,11 +80,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Oriya OS · מערכת ניהול" },
-      { name: "description", content: "מערכת ניהול נכסים ושיווק — Hebrew-first PMS" },
+      { name: "description", content: "מערכת ניהול נכסים ושיווק" },
       { property: "og:title", content: "Oriya OS · מערכת ניהול" },
-      { property: "og:description", content: "מערכת ניהול נכסים ושיווק — Hebrew-first PMS" },
+      { property: "og:description", content: "מערכת ניהול נכסים ושיווק" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Oriya OS · מערכת ניהול" },
+      { name: "twitter:description", content: "מערכת ניהול נכסים ושיווק" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c0084952-63d0-4b02-a890-b47304f88d9b/id-preview-5ad00e92--844de8ec-e347-4673-a0d5-098b5c2fa21e.lovable.app-1785061515581.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c0084952-63d0-4b02-a890-b47304f88d9b/id-preview-5ad00e92--844de8ec-e347-4673-a0d5-098b5c2fa21e.lovable.app-1785061515581.png" },
     ],
     links: [
       {

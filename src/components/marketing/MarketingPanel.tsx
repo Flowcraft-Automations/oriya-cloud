@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { useSuspenseQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Send, Check, Clock, AlertCircle, MessageCircle, Reply, ShieldOff, ShieldCheck } from "lucide-react";
+import { Send, Check, Clock, AlertCircle, ShieldOff, ShieldCheck, Route as RouteIcon, Pause } from "lucide-react";
 import {
   listTemplates,
   listMessages,
   sendTemplateToCustomer,
   sendTemplateByPhone,
   getCustomerConsent,
+  listCustomerEnrollments,
 } from "@/lib/wa.functions";
 import { TonePill, EmptyState } from "@/components/detail/DetailLayout";
 import type { Tone } from "@/lib/types";
@@ -52,6 +53,7 @@ export function MarketingPanel({ mode, customerId, phone, displayName }: Props) 
   const sendToCustFn = useServerFn(sendTemplateToCustomer);
   const sendByPhoneFn = useServerFn(sendTemplateByPhone);
   const consentFn = useServerFn(getCustomerConsent);
+  const enrollFn = useServerFn(listCustomerEnrollments);
 
   const templatesQ = useSuspenseQuery({ queryKey: ["wa-templates"], queryFn: () => templatesFn() });
   const messagesQ = useSuspenseQuery({
@@ -68,9 +70,34 @@ export function MarketingPanel({ mode, customerId, phone, displayName }: Props) 
     queryFn: () => consentFn({ data: { customer_id: customerId! } }),
     enabled: !!customerId,
   });
+  const enrollQ = useQuery({
+    queryKey: ["wa-enroll", customerId],
+    queryFn: () => enrollFn({ data: { customer_id: customerId! } }),
+    enabled: !!customerId,
+  });
 
   const [picked, setPicked] = useState<string>("");
   const [showResult, setShowResult] = useState<{ ok: boolean; reason?: string } | null>(null);
+
+  const pickedTemplate = useMemo(
+    () => (templatesQ.data ?? []).find((t: any) => t.name === picked),
+    [templatesQ.data, picked],
+  );
+
+  const previewBody = useMemo(() => {
+    if (!pickedTemplate?.body_he) return "";
+    const vars: Record<string, string> = {
+      first_name: displayName?.split(" ")[0] ?? "אורח",
+      full_name: displayName ?? "",
+      property: "אוריה סוויטס",
+      unit: "סוויטה 3",
+      checkin_date: new Date(Date.now() + 3 * 86400000).toLocaleDateString("he-IL"),
+      checkout_date: new Date(Date.now() + 5 * 86400000).toLocaleDateString("he-IL"),
+      balance: "1,240",
+      link: "https://orya-suites.com",
+    };
+    return String(pickedTemplate.body_he).replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => vars[k] ?? `{{${k}}}`);
+  }, [pickedTemplate, displayName]);
 
   const approved = useMemo(
     () => (templatesQ.data ?? []).filter((t: any) => t.status === "approved"),
@@ -154,7 +181,73 @@ export function MarketingPanel({ mode, customerId, phone, displayName }: Props) 
             {showResult.ok ? "✓ נכנס לתור לשליחה" : `לא נשלח: ${showResult.reason ?? "שגיאה"}`}
           </div>
         )}
+
+        {pickedTemplate && (
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-center gap-2 text-[11px] uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
+              <span>תצוגה מקדימה</span>
+              <TonePill label={pickedTemplate.category === "marketing" ? "שיווקי" : "שירותי"} tone={pickedTemplate.category === "marketing" ? "purple" : "info"} />
+            </div>
+            <div className="flex justify-end">
+              <div
+                className="max-w-[85%] rounded-2xl rounded-br-sm px-4 py-3 text-sm shadow-sm"
+                style={{ backgroundColor: "#dcf8c6", color: "#0b1220", whiteSpace: "pre-wrap", lineHeight: 1.55 }}
+              >
+                {previewBody}
+                <div className="ltr-num mt-2 text-right text-[10px]" style={{ color: "#5b6b52" }}>
+                  {new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })} ✓✓
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Journeys running */}
+      {customerId && (enrollQ.data?.length ?? 0) > 0 && (
+        <div>
+          <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            <RouteIcon size={14} /> מסעות פעילים
+          </h3>
+          <ul className="space-y-2">
+            {enrollQ.data!.map((e: any) => {
+              const paused = e.paused_until && new Date(e.paused_until) > new Date();
+              const nextIn = paused
+                ? Math.round((new Date(e.paused_until).getTime() - Date.now()) / 3600000)
+                : null;
+              return (
+                <li key={e.id} className="rounded-lg border p-3" style={{ borderColor: "var(--border)", backgroundColor: "white" }}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold" style={{ color: "var(--navy-900)" }}>
+                        {e.wa_journeys?.name_he ?? e.journey_id}
+                      </span>
+                      <TonePill label={e.exited_reason ? "הסתיים" : paused ? "ממתין" : "פעיל"} tone={e.exited_reason ? "neutral" : paused ? "warning" : "success"} />
+                    </div>
+                    <span className="ltr-num text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                      שלב {e.current_step_code}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
+                    {e.step?.name_he ?? "—"}
+                    {e.step?.wa_templates?.name && <> · תבנית: <span style={{ color: "var(--text-primary)" }}>{e.step.wa_templates.name}</span></>}
+                  </div>
+                  {paused && (
+                    <div className="mt-2 inline-flex items-center gap-1 text-[11px]" style={{ color: "var(--warning)" }}>
+                      <Pause size={11} /> שליחה הבאה בעוד <span className="ltr-num">{nextIn}</span> שעות
+                    </div>
+                  )}
+                  {e.exited_reason && (
+                    <div className="mt-2 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                      סיבת סיום: {e.exited_reason}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* Funnel snapshot */}
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">

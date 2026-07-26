@@ -98,7 +98,8 @@ function PropertiesPage() {
                       <div dir="rtl" className="flex flex-wrap items-center gap-3 text-[11px]" style={{ color: "var(--text-secondary)" }}>
                         <span>{u.capacity} אורחים</span>
                         <span aria-hidden style={{ color: "var(--border)" }}>·</span>
-                        <span dir="ltr" className="ltr-num">₪{Number(u.base_price).toLocaleString()} / night</span>
+                        <span dir="ltr" className="ltr-num">₪{Number(u.base_price).toLocaleString()}</span>
+                        <span>/ לילה</span>
                       </div>
                     </div>
                     <button onClick={() => { if (confirm("למחוק יחידה?")) delUnit.mutate(u.id); }}>

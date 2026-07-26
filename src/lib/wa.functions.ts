@@ -107,11 +107,12 @@ export const sendJourneyTest = createServerFn({ method: "POST" })
 
 export const listMessages = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { customer_id?: string; reservation_id?: string; campaign_id?: string; limit?: number }) =>
+  .inputValidator((d: { customer_id?: string; reservation_id?: string; campaign_id?: string; phone?: string; limit?: number }) =>
     z.object({
       customer_id: z.string().uuid().optional(),
       reservation_id: z.string().uuid().optional(),
       campaign_id: z.string().uuid().optional(),
+      phone: z.string().optional(),
       limit: z.number().int().positive().max(200).optional(),
     }).parse(d))
   .handler(async ({ data, context }) => {
@@ -123,6 +124,7 @@ export const listMessages = createServerFn({ method: "GET" })
     if (data.customer_id) q = q.eq("customer_id", data.customer_id);
     if (data.reservation_id) q = q.eq("reservation_id", data.reservation_id);
     if (data.campaign_id) q = q.eq("campaign_id", data.campaign_id);
+    if (data.phone) q = q.eq("phone", data.phone);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return rows ?? [];
@@ -392,4 +394,22 @@ export const getCustomerConsent = createServerFn({ method: "GET" })
     const { data: row } = await context.supabase
       .from("contact_consent").select("opted_in, reason, updated_at").eq("customer_id", data.customer_id).maybeSingle();
     return row ?? { opted_in: true, reason: null, updated_at: null };
+  });
+
+// ---------- Send by phone (used for leads without a customer row) ----------
+
+export const sendTemplateByPhone = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { phone: string; template_name: string; vars?: Record<string, string> }) =>
+    z.object({
+      phone: z.string().min(6),
+      template_name: z.string().min(1),
+      vars: z.record(z.string(), z.string()).optional(),
+    }).parse(d))
+  .handler(async ({ data, context }) => {
+    return insertMessageWithGuards(context.supabase, {
+      phone: data.phone,
+      template_name: data.template_name,
+      vars: data.vars,
+    });
   });

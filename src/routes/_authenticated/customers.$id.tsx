@@ -7,6 +7,7 @@ import { getCustomerDetail, updateCustomer, deleteCustomer, listInvoicesByCustom
 import { channelLabel, statusLabel, statusTone, channelTone, type Channel, type ReservationStatus } from "@/lib/types";
 import { DetailLayout, SectionBar, FieldRow, EditableRow, EmptyState, TonePill } from "@/components/detail/DetailLayout";
 import { InvoicesTable } from "@/components/detail/InvoicesTable";
+import { MarketingPanel } from "@/components/marketing/MarketingPanel";
 
 export const Route = createFileRoute("/_authenticated/customers/$id")({
   head: () => ({ meta: [{ title: "כרטיס לקוח · Oriya OS" }] }),
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/customers/$id")({
   errorComponent: ({ error }) => <div className="p-6 text-sm text-red-700">{error.message}</div>,
 });
 
-type Tab = "profile" | "orders" | "payments";
+type Tab = "profile" | "orders" | "payments" | "marketing";
 
 function CustomerDetailPage() {
   const { id } = Route.useParams();
@@ -73,6 +74,7 @@ function CustomerDetailPage() {
         { key: "profile", label: "פרופיל" },
         { key: "orders", label: "הזמנות", count: reservations.length },
         { key: "payments", label: "תשלומים", count: inv.data.length },
+        { key: "marketing", label: "שיווק" },
       ]}
       activeTab={tab}
       onTabChange={(k) => setTab(k as Tab)}
@@ -135,6 +137,12 @@ function CustomerDetailPage() {
 
       {tab === "payments" && (
         <InvoicesTable invoices={inv.data} emptyText="אין חשבוניות ללקוח זה." onOpen={(iid) => nav({ to: "/payments/$id", params: { id: iid } })} />
+      )}
+
+      {tab === "marketing" && (
+        <div className="p-4">
+          <MarketingPanel mode="customer" customerId={customer.id} phone={customer.phone} displayName={customer.full_name} />
+        </div>
       )}
     </DetailLayout>
   );

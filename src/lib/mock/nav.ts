@@ -5,6 +5,7 @@ import {
   Building2,
   Users,
   Sparkles,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,6 +19,7 @@ export const navGroups: NavGroup[] = [
       { to: "/", label: "דשבורד", icon: LayoutDashboard },
       { to: "/calendar", label: "יומן", icon: CalendarDays },
       { to: "/reservations", label: "הזמנות", icon: BookMarked },
+      { to: "/payments", label: "תשלומים", icon: Receipt },
     ],
   },
   {

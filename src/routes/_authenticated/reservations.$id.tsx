@@ -6,7 +6,7 @@ import { User, Plus } from "lucide-react";
 import { getReservationDetail, updateReservation, deleteReservation, listInvoicesByReservation, createInvoice } from "@/lib/data.functions";
 import { channelLabel, statusLabel, statusTone, channelTone, type Channel, type ReservationStatus } from "@/lib/types";
 import { DetailLayout, SectionBar, FieldRow, EditableRow, TonePill } from "@/components/detail/DetailLayout";
-import { channelLabel as chLabel, sourceLabel } from "@/lib/types";
+import { channelLabel as chLabel } from "@/lib/types";
 import { InvoicesTable } from "@/components/detail/InvoicesTable";
 
 export const Route = createFileRoute("/_authenticated/reservations/$id")({

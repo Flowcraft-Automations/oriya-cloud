@@ -73,6 +73,25 @@ export const deleteUnit = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateUnit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; capacity?: number; base_price?: number; name?: string }) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        capacity: z.number().int().positive().optional(),
+        base_price: z.number().nonnegative().optional(),
+        name: z.string().min(1).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { id, ...patch } = data;
+    const { error } = await context.supabase.from("units").update(patch).eq("id", id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // ---------- Reservations ----------
 
 export const listReservations = createServerFn({ method: "GET" })

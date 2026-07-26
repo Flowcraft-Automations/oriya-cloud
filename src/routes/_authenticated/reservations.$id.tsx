@@ -5,7 +5,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { User, Plus } from "lucide-react";
 import { getReservationDetail, updateReservation, deleteReservation, listInvoicesByReservation, createInvoice } from "@/lib/data.functions";
 import { channelLabel, statusLabel, statusTone, channelTone, type Channel, type ReservationStatus } from "@/lib/types";
-import { DetailLayout, SectionBar, FieldRow, TonePill } from "@/components/detail/DetailLayout";
+import { DetailLayout, SectionBar, FieldRow, EditableRow, TonePill } from "@/components/detail/DetailLayout";
+import { channelLabel as chLabel, sourceLabel } from "@/lib/types";
 import { InvoicesTable } from "@/components/detail/InvoicesTable";
 
 export const Route = createFileRoute("/_authenticated/reservations/$id")({
@@ -61,43 +62,29 @@ function ReservationDetailPage() {
           <SectionBar title="נכס וערוץ" accent="var(--gold-100)" barColor="var(--gold-500)">
             <FieldRow label="נכס" value={property?.name} />
             <FieldRow label="יחידה" value={unit?.name} />
-            <FieldRow label="ערוץ" value={<TonePill label={channelLabel[reservation.channel as Channel]} tone={channelTone[reservation.channel as Channel] ?? "neutral"} />} />
-            <div className="flex items-center justify-between gap-6 px-5 py-3">
-              <select value={reservation.status} onChange={(e) => updM.mutate({ status: e.target.value as ReservationStatus })}
-                className="rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }}>
-                {(Object.keys(statusLabel) as ReservationStatus[]).map((s) => <option key={s} value={s}>{statusLabel[s]}</option>)}
-              </select>
-              <div className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>סטטוס</div>
-            </div>
+            <EditableRow label="ערוץ" type="select" value={reservation.channel}
+              options={(Object.keys(chLabel) as Channel[]).map((c) => ({ value: c, label: chLabel[c] }))}
+              display={<TonePill label={channelLabel[reservation.channel as Channel]} tone={channelTone[reservation.channel as Channel] ?? "neutral"} />}
+              onSave={(v) => updM.mutate({ channel: v as Channel })} />
+            <EditableRow label="סטטוס" type="select" value={reservation.status}
+              options={(Object.keys(statusLabel) as ReservationStatus[]).map((s) => ({ value: s, label: statusLabel[s] }))}
+              display={<TonePill label={statusLabel[reservation.status as ReservationStatus]} tone={statusTone[reservation.status as ReservationStatus] ?? "neutral"} />}
+              onSave={(v) => updM.mutate({ status: v as ReservationStatus })} />
           </SectionBar>
 
           <SectionBar title="שהות" accent="var(--info-bg)" barColor="var(--info)">
-            <div className="grid grid-cols-2 gap-4 px-5 py-3">
-              <div>
-                <div className="text-[11px] uppercase" style={{ color: "var(--text-secondary)" }}>צ׳ק-אין</div>
-                <input type="date" defaultValue={reservation.check_in}
-                  onBlur={(e) => e.target.value !== reservation.check_in && updM.mutate({ check_in: e.target.value })}
-                  className="ltr-num w-full rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }} />
-              </div>
-              <div>
-                <div className="text-[11px] uppercase" style={{ color: "var(--text-secondary)" }}>צ׳ק-אאוט</div>
-                <input type="date" defaultValue={reservation.check_out}
-                  onBlur={(e) => e.target.value !== reservation.check_out && updM.mutate({ check_out: e.target.value })}
-                  className="ltr-num w-full rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }} />
-              </div>
-              <div>
-                <div className="text-[11px] uppercase" style={{ color: "var(--text-secondary)" }}>מבוגרים</div>
-                <input type="number" defaultValue={reservation.adults}
-                  onBlur={(e) => Number(e.target.value) !== reservation.adults && updM.mutate({ adults: Number(e.target.value) })}
-                  className="ltr-num w-full rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }} />
-              </div>
-              <div>
-                <div className="text-[11px] uppercase" style={{ color: "var(--text-secondary)" }}>ילדים</div>
-                <input type="number" defaultValue={reservation.children}
-                  onBlur={(e) => Number(e.target.value) !== reservation.children && updM.mutate({ children: Number(e.target.value) })}
-                  className="ltr-num w-full rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }} />
-              </div>
-            </div>
+            <EditableRow label="צ׳ק-אין" type="date" ltr value={reservation.check_in}
+              onSave={(v) => v && updM.mutate({ check_in: v })} />
+            <EditableRow label="צ׳ק-אאוט" type="date" ltr value={reservation.check_out}
+              onSave={(v) => v && updM.mutate({ check_out: v })} />
+            <EditableRow label="מבוגרים" type="number" ltr value={reservation.adults}
+              onSave={(v) => updM.mutate({ adults: Number(v ?? 0) })} />
+            <EditableRow label="ילדים" type="number" ltr value={reservation.children}
+              onSave={(v) => updM.mutate({ children: Number(v ?? 0) })} />
+            <EditableRow label="סה״כ (₪)" type="number" ltr value={reservation.total_amount}
+              onSave={(v) => updM.mutate({ total_amount: Number(v ?? 0) })} />
+            <EditableRow label="שולם (₪)" type="number" ltr value={reservation.paid_amount}
+              onSave={(v) => updM.mutate({ paid_amount: Number(v ?? 0) })} />
             <FieldRow label="לילות" value={String(reservation.nights)} ltr />
           </SectionBar>
 
@@ -123,11 +110,7 @@ function ReservationDetailPage() {
           </SectionBar>
 
           <SectionBar title="הערות" accent="var(--bg-subtle)" barColor="var(--border)">
-            <div className="p-4">
-              <textarea rows={3} defaultValue={reservation.notes ?? ""}
-                onBlur={(e) => e.target.value !== (reservation.notes ?? "") && updM.mutate({ notes: e.target.value })}
-                className="w-full rounded-md border p-2 text-sm" style={{ borderColor: "var(--border)" }} />
-            </div>
+            <EditableRow label="הערות" type="textarea" value={reservation.notes} onSave={(v) => updM.mutate({ notes: v })} />
           </SectionBar>
         </div>
       )}
@@ -148,10 +131,10 @@ function ReservationDetailPage() {
                 <FieldRow label="אימייל" value={customer.email} ltr />
               </>
             ) : (
-              <div className="p-6 text-sm" style={{ color: "var(--text-secondary)" }}>
-                לא משויך ללקוח בבסיס. שם אורח: <b>{reservation.guest_name}</b>
-                {reservation.phone && <div className="ltr-num mt-1" dir="ltr">{reservation.phone}</div>}
-              </div>
+              <>
+                <EditableRow label="שם אורח" value={reservation.guest_name} onSave={(v) => v && updM.mutate({ guest_name: v })} />
+                <EditableRow label="טלפון" type="tel" ltr value={reservation.phone} onSave={(v) => updM.mutate({ phone: v })} />
+              </>
             )}
           </SectionBar>
         </div>

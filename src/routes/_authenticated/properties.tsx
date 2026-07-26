@@ -118,25 +118,36 @@ function PropertiesPage() {
 
 function AddUnitForm({ propertyId, onAdd, pending }: { propertyId: string; onAdd: (v: { property_id: string; name: string; capacity: number; base_price: number }) => void; pending: boolean }) {
   const [name, setName] = useState("");
-  const [capacity, setCapacity] = useState(2);
-  const [price, setPrice] = useState(500);
+  const [capacity, setCapacity] = useState("");
+  const [price, setPrice] = useState("");
   return (
     <form
-      className="grid gap-2 sm:grid-cols-4"
+      className="grid items-end gap-2 sm:grid-cols-4"
       onSubmit={(e) => {
         e.preventDefault();
         if (!name) return;
-        onAdd({ property_id: propertyId, name, capacity, base_price: price });
+        onAdd({ property_id: propertyId, name, capacity: capacity ? Number(capacity) : 2, base_price: price ? Number(price) : 0 });
         setName("");
+        setCapacity("");
+        setPrice("");
       }}
     >
-      <input required placeholder="שם היחידה" className="rounded-md border px-2 py-1 text-xs" style={{ borderColor: "var(--border)" }}
-        value={name} onChange={(e) => setName(e.target.value)} />
-      <input type="number" min={1} placeholder="קיבולת" className="ltr-num rounded-md border px-2 py-1 text-xs" dir="ltr" style={{ borderColor: "var(--border)" }}
-        value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} />
-      <input type="number" min={0} placeholder="מחיר בסיס" className="ltr-num rounded-md border px-2 py-1 text-xs" dir="ltr" style={{ borderColor: "var(--border)" }}
-        value={price} onChange={(e) => setPrice(Number(e.target.value))} />
-      <button disabled={pending} type="submit" className="rounded-md px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
+      <label className="grid gap-1 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+        שם היחידה
+        <input required placeholder="לדוגמה: סוויטה A" className="rounded-md border px-2 py-1 text-xs" style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
+          value={name} onChange={(e) => setName(e.target.value)} />
+      </label>
+      <label className="grid gap-1 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+        קיבולת (אורחים)
+        <input type="number" min={1} placeholder="2" className="ltr-num rounded-md border px-2 py-1 text-xs" dir="ltr" style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
+          value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+      </label>
+      <label className="grid gap-1 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+        מחיר בסיס ללילה (₪)
+        <input type="number" min={0} placeholder="500" className="ltr-num rounded-md border px-2 py-1 text-xs" dir="ltr" style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
+          value={price} onChange={(e) => setPrice(e.target.value)} />
+      </label>
+      <button disabled={pending} type="submit" className="rounded-md px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
         style={{ backgroundColor: "var(--navy-700)" }}>+ יחידה</button>
     </form>
   );

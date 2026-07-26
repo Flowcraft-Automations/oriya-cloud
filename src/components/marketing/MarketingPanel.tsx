@@ -12,6 +12,7 @@ import {
 } from "@/lib/wa.functions";
 import { TonePill, EmptyState } from "@/components/detail/DetailLayout";
 import type { Tone } from "@/lib/types";
+import { LeadJourneysDemo } from "./LeadJourneysDemo";
 
 type Props = {
   mode: "customer" | "lead";
@@ -130,6 +131,9 @@ export function MarketingPanel({ mode, customerId, phone, displayName }: Props) 
 
   return (
     <div className="space-y-6" dir="rtl">
+      {mode === "lead" && (
+        <LeadJourneysDemo seed={phone ?? displayName ?? "lead"} leadName={displayName} />
+      )}
       {/* Manual trigger */}
       <div className="rounded-lg border p-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-subtle)" }}>
         <div className="mb-3 flex items-center justify-between">

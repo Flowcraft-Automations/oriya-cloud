@@ -6,6 +6,7 @@ import { Mail, MessageCircle, Plus, ExternalLink, Globe } from "lucide-react";
 import { getLeadDetail, updateLead, deleteLead, addLeadInquiry, listPropertiesWithUnits } from "@/lib/data.functions";
 import { sourceLabel, stageLabel, sourceTone, stageTone, type LeadSource, type LeadStage } from "@/lib/types";
 import { DetailLayout, SectionBar, FieldRow, EditableRow, EmptyState, TonePill } from "@/components/detail/DetailLayout";
+import { MarketingPanel } from "@/components/marketing/MarketingPanel";
 
 export const Route = createFileRoute("/_authenticated/leads/$id")({
   head: () => ({ meta: [{ title: "כרטיס ליד · Oriya OS" }] }),
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/_authenticated/leads/$id")({
   errorComponent: ({ error }) => <div className="p-6 text-sm text-red-700">{error.message}</div>,
 });
 
-type Tab = "profile" | "inquiries";
+type Tab = "profile" | "inquiries" | "marketing";
 
 function LeadDetailPage() {
   const { id } = Route.useParams();
@@ -66,6 +67,7 @@ function LeadDetailPage() {
       tabs={[
         { key: "profile", label: "פרופיל" },
         { key: "inquiries", label: "פניות", count: inquiries.length },
+        { key: "marketing", label: "שיווק" },
       ]}
       activeTab={tab}
       onTabChange={(k) => setTab(k as Tab)}
@@ -179,6 +181,12 @@ function LeadDetailPage() {
               })}
             </ul>
           )}
+        </div>
+      )}
+
+      {tab === "marketing" && (
+        <div className="p-4">
+          <MarketingPanel mode="lead" phone={lead.phone} displayName={lead.full_name} />
         </div>
       )}
     </DetailLayout>

@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, LayoutGrid, List, ExternalLink } from "lucide-react";
 import { PageHeader, ActionButton } from "@/components/shell/PageHeader";
 import { OCard } from "@/components/ui-oriya/Card";
-import { listLeads, createLead, updateLeadStage, deleteLead } from "@/lib/data.functions";
-import { sourceLabel, stageLabel, sourceTone, type Lead, type LeadSource, type LeadStage } from "@/lib/types";
+import { listLeads, createLead, updateLeadStage, updateLead, deleteLead } from "@/lib/data.functions";
+import { sourceLabel, stageLabel, sourceTone, stageTone, type Lead, type LeadSource, type LeadStage } from "@/lib/types";
 import { TonePill } from "@/components/detail/DetailLayout";
 
 export const Route = createFileRoute("/_authenticated/leads/")({
@@ -23,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/leads/")({
 });
 
 const stages: LeadStage[] = ["new", "contacted", "quoted", "booked", "lost"];
+const sources: LeadSource[] = ["whatsapp", "website", "tzimmerer", "instagram", "referral", "other"];
 
 function LeadsPage() {
   const qc = useQueryClient();
@@ -30,11 +31,15 @@ function LeadsPage() {
   const [open, setOpen] = useState(false);
   const list = useServerFn(listLeads);
   const create = useServerFn(createLead);
-  const upd = useServerFn(updateLeadStage);
+  const updStage = useServerFn(updateLeadStage);
+  const upd = useServerFn(updateLead);
   const del = useServerFn(deleteLead);
   const q = useSuspenseQuery({ queryKey: ["leads"], queryFn: () => list() });
-  const updM = useMutation({ mutationFn: (v: { id: string; stage: LeadStage }) => upd({ data: v }), onSuccess: () => qc.invalidateQueries() });
+  const stageM = useMutation({ mutationFn: (v: { id: string; stage: LeadStage }) => updStage({ data: v }), onSuccess: () => qc.invalidateQueries() });
+  const updM = useMutation({ mutationFn: (v: Record<string, unknown> & { id: string }) => upd({ data: v }), onSuccess: () => qc.invalidateQueries() });
   const delM = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: () => qc.invalidateQueries() });
+
+  const [view, setView] = useState<"kanban" | "table">("table");
 
   const [form, setForm] = useState({ full_name: "", phone: "", source: "whatsapp" as LeadSource, interest: "" });
   const createM = useMutation({
@@ -51,7 +56,21 @@ function LeadsPage() {
       <PageHeader
         title="לידים ושיווק"
         subtitle="צינור לידים · קנבן לפי שלב"
-        action={<ActionButton variant="gold" onClick={() => setOpen(!open)}><Plus size={16} />ליד חדש</ActionButton>}
+        action={
+          <div className="flex items-center gap-2">
+            <div className="inline-flex overflow-hidden rounded-md border" style={{ borderColor: "var(--border)" }}>
+              <button onClick={() => setView("table")} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs"
+                style={{ backgroundColor: view === "table" ? "var(--navy-900)" : "transparent", color: view === "table" ? "#fff" : "var(--text-secondary)" }}>
+                <List size={12} /> טבלה
+              </button>
+              <button onClick={() => setView("kanban")} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs"
+                style={{ backgroundColor: view === "kanban" ? "var(--navy-900)" : "transparent", color: view === "kanban" ? "#fff" : "var(--text-secondary)" }}>
+                <LayoutGrid size={12} /> קנבן
+              </button>
+            </div>
+            <ActionButton variant="gold" onClick={() => setOpen(!open)}><Plus size={16} />ליד חדש</ActionButton>
+          </div>
+        }
       />
 
       {open && (
@@ -74,6 +93,14 @@ function LeadsPage() {
         </OCard>
       )}
 
+      {view === "table" ? (
+        <LeadsTable
+          leads={q.data}
+          onOpen={(id) => nav({ to: "/leads/$id", params: { id } })}
+          onPatch={(id, patch) => updM.mutate({ id, ...patch })}
+          onDelete={(id) => { if (confirm("למחוק?")) delM.mutate(id); }}
+        />
+      ) : (
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
         {stages.map((s) => {
           const items = q.data.filter((l: Lead) => l.stage === s);
@@ -109,7 +136,7 @@ function LeadsPage() {
                       style={{ borderColor: "var(--border)" }}
                       value={l.stage}
                       onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => updM.mutate({ id: l.id, stage: e.target.value as LeadStage })}
+                      onChange={(e) => stageM.mutate({ id: l.id, stage: e.target.value as LeadStage })}
                     >
                       {stages.map((st) => <option key={st} value={st}>{stageLabel[st]}</option>)}
                     </select>
@@ -121,6 +148,133 @@ function LeadsPage() {
           );
         })}
       </div>
+      )}
     </>
+  );
+}
+
+function LeadsTable({
+  leads, onOpen, onPatch, onDelete,
+}: {
+  leads: Lead[];
+  onOpen: (id: string) => void;
+  onPatch: (id: string, patch: Record<string, unknown>) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <OCard className="overflow-hidden p-0">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" dir="rtl">
+          <thead>
+            <tr className="text-right text-[11px] uppercase tracking-wide" style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-subtle)" }}>
+              <th className="px-3 py-2 font-medium">שם</th>
+              <th className="px-3 py-2 font-medium">טלפון</th>
+              <th className="px-3 py-2 font-medium">אימייל</th>
+              <th className="px-3 py-2 font-medium">מקור</th>
+              <th className="px-3 py-2 font-medium">שלב</th>
+              <th className="px-3 py-2 font-medium">עניין</th>
+              <th className="w-10 px-2 py-2"></th>
+              <th className="w-10 px-2 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {leads.map((l) => (
+              <LeadRow key={l.id} lead={l} onOpen={onOpen} onPatch={onPatch} onDelete={onDelete} />
+            ))}
+            {leads.length === 0 && (
+              <tr><td colSpan={8} className="p-8 text-center text-xs" style={{ color: "var(--text-secondary)" }}>אין לידים להצגה</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </OCard>
+  );
+}
+
+function LeadRow({
+  lead: l, onOpen, onPatch, onDelete,
+}: {
+  lead: Lead;
+  onOpen: (id: string) => void;
+  onPatch: (id: string, patch: Record<string, unknown>) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <tr className="border-t transition-colors hover:bg-[var(--bg-subtle)]" style={{ borderColor: "var(--border)" }}>
+      <td className="px-2 py-1"><InlineText value={l.full_name} onSave={(v) => v && onPatch(l.id, { full_name: v })} bold /></td>
+      <td className="px-2 py-1"><InlineText value={l.phone ?? ""} ltr onSave={(v) => onPatch(l.id, { phone: v || null })} /></td>
+      <td className="px-2 py-1"><InlineText value={l.email ?? ""} ltr onSave={(v) => onPatch(l.id, { email: v || null })} /></td>
+      <td className="px-2 py-1">
+        <InlineSelect
+          value={l.source}
+          options={sources.map((s) => ({ value: s, label: sourceLabel[s] }))}
+          onSave={(v) => onPatch(l.id, { source: v })}
+          display={<TonePill label={sourceLabel[l.source as LeadSource]} tone={sourceTone[l.source as LeadSource] ?? "neutral"} />}
+        />
+      </td>
+      <td className="px-2 py-1">
+        <InlineSelect
+          value={l.stage}
+          options={stages.map((s) => ({ value: s, label: stageLabel[s] }))}
+          onSave={(v) => onPatch(l.id, { stage: v })}
+          display={<TonePill label={stageLabel[l.stage as LeadStage]} tone={stageTone[l.stage as LeadStage] ?? "neutral"} />}
+        />
+      </td>
+      <td className="px-2 py-1"><InlineText value={l.interest ?? ""} onSave={(v) => onPatch(l.id, { interest: v || null })} /></td>
+      <td className="px-2 py-1 text-center">
+        <button onClick={() => onOpen(l.id)} aria-label="פתח" className="rounded p-1 hover:bg-white">
+          <ExternalLink size={13} style={{ color: "var(--navy-700)" }} />
+        </button>
+      </td>
+      <td className="px-2 py-1 text-center">
+        <button onClick={() => onDelete(l.id)} aria-label="מחק" className="rounded p-1 hover:bg-white">
+          <Trash2 size={13} style={{ color: "var(--danger)" }} />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+function InlineText({ value, onSave, ltr, bold }: { value: string; onSave: (v: string) => void; ltr?: boolean; bold?: boolean }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  const commit = () => { setEditing(false); if (draft !== value) onSave(draft); };
+  if (editing) {
+    return (
+      <input autoFocus value={draft} dir={ltr ? "ltr" : undefined}
+        onChange={(e) => setDraft(e.target.value)} onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
+        className={"w-full rounded border bg-white px-1.5 py-1 text-sm outline-none focus:border-[var(--info)] " + (ltr ? "ltr-num" : "")}
+        style={{ borderColor: "var(--border)" }} />
+    );
+  }
+  return (
+    <button onClick={() => setEditing(true)}
+      className={"w-full rounded border border-transparent px-1.5 py-1 text-start text-sm hover:border-[var(--border)] hover:bg-white " + (ltr ? "ltr-num" : "") + (bold ? " font-medium" : "")}
+      dir={ltr ? "ltr" : undefined}
+      style={{ color: value ? "var(--text-primary)" : "var(--text-secondary)" }}>
+      {value || "—"}
+    </button>
+  );
+}
+
+function InlineSelect({ value, options, onSave, display }: {
+  value: string; options: { value: string; label: string }[]; onSave: (v: string) => void; display: React.ReactNode;
+}) {
+  const [editing, setEditing] = useState(false);
+  if (editing) {
+    return (
+      <select autoFocus value={value}
+        onChange={(e) => { onSave(e.target.value); setEditing(false); }}
+        onBlur={() => setEditing(false)}
+        className="w-full rounded border bg-white px-1.5 py-1 text-sm outline-none focus:border-[var(--info)]"
+        style={{ borderColor: "var(--border)" }}>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    );
+  }
+  return (
+    <button onClick={() => setEditing(true)} className="rounded px-1 py-1 hover:opacity-80">{display}</button>
   );
 }

@@ -1,28 +1,54 @@
 ## Goal
-Wire the existing mock data together so customers, reservations, and payments all cross-reference each other and profile pages show real history.
+Replace the single dashboard with a tabbed view containing three focused dashboards, each fed by real data from Supabase. Keep interconnections consistent; top up seed data only where the current volume is too thin to make a chart meaningful.
 
-## Current state (verified)
-- 12 customers, 16 reservations, 12 leads with 15 inquiries.
-- **All 16 reservations have `customer_id = NULL`** even though every `guest_name`/`phone` matches an existing customer row.
-- **0 invoices** and **0 communications** exist, so customer/reservation "תשלומים" and "תכתובות" tabs are always empty.
+## Structure
+`src/routes/_authenticated/index.tsx` renders a page header + a tab strip (`תפעול` · `לידים ומכירות` · `פיננסי`), each tab a self-contained dashboard component. URL syncs via `?tab=ops|leads|finance` (default `ops`).
 
-## Changes (data only — no schema, no code)
+## Tab 1 — תפעול (Check-in cycle)
+Data: `reservations`, `units`, `properties`.
+- KPIs: staying now, arrivals today, departures today, occupancy this month, avg stay length, cancellation rate (last 30d).
+- 7-day arrivals/departures stacked bar (today ±3).
+- Today's arrivals list (guest, unit, phone, status pill) + departures list.
+- Upcoming week table: date, unit, guest, channel, status — clickable to reservation detail.
+- Unit status strip: each unit → currently occupied / free / arriving today, colored.
 
-### 1. Link reservations to customers
-Update every reservation's `customer_id` by matching `guest_name` + `phone` to the `customers` table. All 16 will get linked.
+## Tab 2 — לידים ומכירות (Leads)
+Data: `leads`, `lead_inquiries`, `reservations` (for booked conversions), `communications`.
+- KPIs: new leads this month, open leads (not booked/lost), conversion rate (booked / total closed), avg time-to-book, inquiries this week.
+- Funnel bar: new → contacted → quoted → booked / lost with counts.
+- Source breakdown pie (website, whatsapp, tzimmerer, instagram, referral, other) with % and counts.
+- Inquiries-per-property bar (from `lead_inquiries.property_id`).
+- Recent inquiries list (source pill, property, dates, guest name) — clickable to lead.
+- Top-of-funnel: 5 newest leads with stage pill + last-contact date.
 
-### 2. Generate invoices tied to both reservation and customer
-For each reservation that has money on it (skip `pending`/`cancelled` with 0 paid), create 1–2 invoice rows with `reservation_id` and `customer_id` populated:
-- `checkout` → one `paid` invoice for the full amount.
-- `checkin` → one `paid` invoice (deposit = `paid_amount`) + one `sent` invoice (balance, due at checkout).
-- `confirmed` with partial payment → one `paid` deposit invoice + one `sent` balance invoice.
-- `confirmed` fully paid → one `paid` invoice.
-- Amounts split as `amount` (pre-VAT) + `tax` (17%) + `total`, using the existing `total_amount`/`paid_amount` figures. `invoice_number` follows `INV-2026-####`.
+## Tab 3 — פיננסי (Financial)
+Data: `invoices`, `reservations`.
+- KPIs: revenue this month (paid invoices), outstanding balance (sent+overdue), overdue amount, ADR, RevPAR, paid-invoice count.
+- Revenue by month bar (last 6 months, current highlighted) — from paid invoices `issue_date`.
+- Paid vs outstanding donut (this month).
+- Revenue by channel bar (sum `reservations.total_amount` per channel this month).
+- Outstanding invoices table: number, customer, due date, days overdue, total, status pill — clickable to payment detail.
+- Top customers by revenue (last 90d), top 5.
 
-### 3. Generate communications history
-Insert ~25 `communications` rows across the 12 customers (WhatsApp + email mix, some tied to a specific `reservation_id`): booking confirmations, pre-arrival WhatsApp, checkout thank-you, review request. Content in Hebrew.
+## Seed top-up (only if needed to make charts meaningful)
+After counting current data:
+- If <8 paid invoices exist across last 6 months → add historical paid invoices tied to existing checkout reservations spanning 6 months so the revenue-by-month chart is non-trivial. New invoices reuse existing `customer_id` + `reservation_id`; no orphan rows.
+- If fewer than 6 leads have `stage='booked'` → mark a few existing leads booked and set their `booked_reservation_id` (if column exists) or match by phone to an existing reservation so funnel + conversion have real numbers.
+- No new customers, reservations, or units created — interconnection integrity preserved.
 
-## Result
-- Customer detail → "הזמנות" lists their real stays, "תשלומים" shows their invoices, "תכתובות" shows past messages.
-- Reservation detail → "לקוח" tab resolves to the real customer card; "תשלומים" shows deposit/balance invoices.
-- Payment detail → "לקוח" and "הזמנה" tabs both link to real records.
+## Backend
+Add three server functions in `src/lib/data.functions.ts`:
+- `getOperationsDashboard()` — arrivals/departures ±3 days, unit status, KPIs.
+- `getLeadsDashboard()` — funnel counts, source mix, inquiries-per-property, recent inquiries, KPIs.
+- `getFinancialDashboard()` — monthly revenue series, paid/outstanding, channel revenue, overdue list, top customers, KPIs.
+
+Existing `getDashboardData` is removed after the new page is wired.
+
+## Frontend
+- `src/routes/_authenticated/index.tsx` — tab shell reading `?tab`.
+- `src/components/dashboard/OperationsTab.tsx`, `LeadsTab.tsx`, `FinancialTab.tsx` — each uses `useSuspenseQuery` on its own server fn.
+- Reuse `KpiCard`, `ActivityListCard`, `RevenueChart`, `OccupancyChart`, `ChannelMixChart`, `TonePill`. Add a small `FunnelBar` and `MiniDonut` inline where needed.
+- Preserve RTL, existing navy/gold palette, and inline navigation to detail pages.
+
+## Out of scope
+No schema changes, no new tables, no auth changes, no changes to other modules' pages.

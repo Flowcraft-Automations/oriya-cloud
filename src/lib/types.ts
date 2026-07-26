@@ -129,4 +129,8 @@ export type Lead = {
   property_id: string | null;
   notes: string | null;
   created_at: string;
+  warmth?: string | null;
+  bot_stage?: string | null;
+  last_bot_event_at?: string | null;
+  manychat_subscriber_id?: string | null;
 };

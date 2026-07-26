@@ -2,12 +2,22 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Trash2, LayoutGrid, List, ExternalLink } from "lucide-react";
+import { Plus, Trash2, LayoutGrid, List, ExternalLink, MessageSquare } from "lucide-react";
 import { PageHeader, ActionButton } from "@/components/shell/PageHeader";
 import { OCard } from "@/components/ui-oriya/Card";
 import { listLeads, createLead, updateLeadStage, updateLead, deleteLead } from "@/lib/data.functions";
 import { sourceLabel, stageLabel, sourceTone, stageTone, type Lead, type LeadSource, type LeadStage } from "@/lib/types";
 import { TonePill } from "@/components/detail/DetailLayout";
+import { supabase } from "@/integrations/supabase/client";
+
+const MANYCHAT_WORKSPACE = "fb3418755";
+const warmthLabel: Record<string, string> = { cold: "קר", warm: "פושר", hot: "חם" };
+const warmthTone: Record<string, "neutral" | "gold" | "danger"> = { cold: "neutral", warm: "gold", hot: "danger" };
+const warmthOptions = [
+  { value: "cold", label: "קר" },
+  { value: "warm", label: "פושר" },
+  { value: "hot", label: "חם" },
+];
 
 export const Route = createFileRoute("/_authenticated/leads/")({
   head: () => ({
@@ -40,6 +50,15 @@ function LeadsPage() {
   const delM = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: () => qc.invalidateQueries() });
 
   const [view, setView] = useState<"kanban" | "table">("table");
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("leads-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" },
+        () => qc.invalidateQueries({ queryKey: ["leads"] }))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
 
   const [form, setForm] = useState({ full_name: "", phone: "", source: "whatsapp" as LeadSource, interest: "" });
   const createM = useMutation({
@@ -123,6 +142,7 @@ function LeadsPage() {
                         <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{l.full_name}</div>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]" style={{ color: "var(--text-secondary)" }}>
                           <TonePill label={sourceLabel[l.source as LeadSource]} tone={sourceTone[l.source as LeadSource] ?? "neutral"} />
+                          <TonePill label={warmthLabel[l.warmth ?? "cold"]} tone={warmthTone[l.warmth ?? "cold"]} />
                           {l.interest && <span>· {l.interest}</span>}
                         </div>
                         {l.phone && <div className="ltr-num mt-0.5 text-[11px]" style={{ color: "var(--text-secondary)" }}>{l.phone}</div>}
@@ -171,8 +191,10 @@ function LeadsTable({
               <th className="px-3 py-2 font-medium">טלפון</th>
               <th className="px-3 py-2 font-medium">אימייל</th>
               <th className="px-3 py-2 font-medium">מקור</th>
+              <th className="px-3 py-2 font-medium">חמימות</th>
               <th className="px-3 py-2 font-medium">שלב</th>
               <th className="px-3 py-2 font-medium">עניין</th>
+              <th className="w-10 px-2 py-2"></th>
               <th className="w-10 px-2 py-2"></th>
               <th className="w-10 px-2 py-2"></th>
             </tr>
@@ -182,7 +204,7 @@ function LeadsTable({
               <LeadRow key={l.id} lead={l} onOpen={onOpen} onPatch={onPatch} onDelete={onDelete} />
             ))}
             {leads.length === 0 && (
-              <tr><td colSpan={8} className="p-8 text-center text-xs" style={{ color: "var(--text-secondary)" }}>אין לידים להצגה</td></tr>
+              <tr><td colSpan={10} className="p-8 text-center text-xs" style={{ color: "var(--text-secondary)" }}>אין לידים להצגה</td></tr>
             )}
           </tbody>
         </table>
@@ -214,6 +236,14 @@ function LeadRow({
       </td>
       <td className="px-2 py-1">
         <InlineSelect
+          value={l.warmth ?? "cold"}
+          options={warmthOptions}
+          onSave={(v) => onPatch(l.id, { warmth: v })}
+          display={<TonePill label={warmthLabel[l.warmth ?? "cold"]} tone={warmthTone[l.warmth ?? "cold"]} />}
+        />
+      </td>
+      <td className="px-2 py-1">
+        <InlineSelect
           value={l.stage}
           options={stages.map((s) => ({ value: s, label: stageLabel[s] }))}
           onSave={(v) => onPatch(l.id, { stage: v })}
@@ -221,6 +251,24 @@ function LeadRow({
         />
       </td>
       <td className="px-2 py-1"><InlineText value={l.interest ?? ""} onSave={(v) => onPatch(l.id, { interest: v || null })} /></td>
+      <td className="px-2 py-1 text-center">
+        {l.manychat_subscriber_id ? (
+          <a
+            href={`https://app.manychat.com/${MANYCHAT_WORKSPACE}/chat/${l.manychat_subscriber_id}`}
+            target="_blank" rel="noopener noreferrer"
+            aria-label="פתח ב־ManyChat"
+            title="פתח ב־ManyChat"
+            className="inline-flex rounded p-1 hover:bg-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MessageSquare size={13} style={{ color: "var(--success)" }} />
+          </a>
+        ) : (
+          <span className="inline-flex p-1 opacity-25" title="אין subscriber ב־ManyChat">
+            <MessageSquare size={13} />
+          </span>
+        )}
+      </td>
       <td className="px-2 py-1 text-center">
         <button onClick={() => onOpen(l.id)} aria-label="פתח" className="rounded p-1 hover:bg-white">
           <ExternalLink size={13} style={{ color: "var(--navy-700)" }} />

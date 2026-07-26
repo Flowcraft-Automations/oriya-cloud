@@ -8,7 +8,7 @@ import { OCard } from "@/components/ui-oriya/Card";
 import { listLeads, createLead, updateLeadStage, deleteLead } from "@/lib/data.functions";
 import { sourceLabel, stageLabel, type Lead, type LeadSource, type LeadStage } from "@/lib/types";
 
-export const Route = createFileRoute("/_authenticated/leads")({
+export const Route = createFileRoute("/_authenticated/leads/")({
   head: () => ({
     meta: [
       { title: "לידים · Oriya OS" },

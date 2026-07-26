@@ -9,7 +9,7 @@ import { OCard } from "@/components/ui-oriya/Card";
 import { listCustomers, createCustomer, deleteCustomer } from "@/lib/data.functions";
 import type { Customer } from "@/lib/types";
 
-export const Route = createFileRoute("/_authenticated/customers")({
+export const Route = createFileRoute("/_authenticated/customers/")({
   head: () => ({
     meta: [
       { title: "לקוחות · Oriya OS" },

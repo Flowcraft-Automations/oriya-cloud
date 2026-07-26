@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Trash2 } from "lucide-react";
@@ -87,8 +88,10 @@ function CustomersPage() {
             </thead>
             <tbody>
               {rows.map((c: Customer) => (
-                <tr key={c.id} className="border-t" style={{ borderColor: "var(--border)" }}>
-                  <td className="px-3 py-2.5 font-medium" style={{ color: "var(--text-primary)" }}>{c.full_name}</td>
+                <tr key={c.id} className="border-t hover:bg-[var(--bg-subtle)]" style={{ borderColor: "var(--border)" }}>
+                  <td className="px-3 py-2.5 font-medium" style={{ color: "var(--text-primary)" }}>
+                    <Link to="/customers/$id" params={{ id: c.id }} className="hover:underline">{c.full_name}</Link>
+                  </td>
                   <td className="ltr-num px-3 py-2.5" style={{ color: "var(--text-secondary)" }}>{c.phone ?? "—"}</td>
                   <td className="ltr-num px-3 py-2.5" style={{ color: "var(--text-secondary)" }}>{c.email ?? "—"}</td>
                   <td className="px-3 py-2.5">

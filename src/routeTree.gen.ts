@@ -17,6 +17,7 @@ import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedReservationsIdRouteImport } from './routes/_authenticated/reservations.$id'
 import { Route as AuthenticatedLeadsIdRouteImport } from './routes/_authenticated/leads.$id'
 import { Route as AuthenticatedCustomersIdRouteImport } from './routes/_authenticated/customers.$id'
 
@@ -60,6 +61,12 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedReservationsIdRoute =
+  AuthenticatedReservationsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedReservationsRoute,
+  } as any)
 const AuthenticatedLeadsIdRoute = AuthenticatedLeadsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -79,9 +86,10 @@ export interface FileRoutesByFullPath {
   '/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/leads': typeof AuthenticatedLeadsRouteWithChildren
   '/properties': typeof AuthenticatedPropertiesRoute
-  '/reservations': typeof AuthenticatedReservationsRoute
+  '/reservations': typeof AuthenticatedReservationsRouteWithChildren
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
+  '/reservations/$id': typeof AuthenticatedReservationsIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -89,10 +97,11 @@ export interface FileRoutesByTo {
   '/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/leads': typeof AuthenticatedLeadsRouteWithChildren
   '/properties': typeof AuthenticatedPropertiesRoute
-  '/reservations': typeof AuthenticatedReservationsRoute
+  '/reservations': typeof AuthenticatedReservationsRouteWithChildren
   '/': typeof AuthenticatedIndexRoute
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
+  '/reservations/$id': typeof AuthenticatedReservationsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -102,10 +111,11 @@ export interface FileRoutesById {
   '/_authenticated/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/_authenticated/leads': typeof AuthenticatedLeadsRouteWithChildren
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
-  '/_authenticated/reservations': typeof AuthenticatedReservationsRoute
+  '/_authenticated/reservations': typeof AuthenticatedReservationsRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/_authenticated/leads/$id': typeof AuthenticatedLeadsIdRoute
+  '/_authenticated/reservations/$id': typeof AuthenticatedReservationsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/customers/$id'
     | '/leads/$id'
+    | '/reservations/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/customers/$id'
     | '/leads/$id'
+    | '/reservations/$id'
   id:
     | '__root__'
     | '/_authenticated'
@@ -142,6 +154,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/customers/$id'
     | '/_authenticated/leads/$id'
+    | '/_authenticated/reservations/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reservations/$id': {
+      id: '/_authenticated/reservations/$id'
+      path: '/$id'
+      fullPath: '/reservations/$id'
+      preLoaderRoute: typeof AuthenticatedReservationsIdRouteImport
+      parentRoute: typeof AuthenticatedReservationsRoute
+    }
     '/_authenticated/leads/$id': {
       id: '/_authenticated/leads/$id'
       path: '/$id'
@@ -249,12 +269,26 @@ const AuthenticatedLeadsRouteChildren: AuthenticatedLeadsRouteChildren = {
 const AuthenticatedLeadsRouteWithChildren =
   AuthenticatedLeadsRoute._addFileChildren(AuthenticatedLeadsRouteChildren)
 
+interface AuthenticatedReservationsRouteChildren {
+  AuthenticatedReservationsIdRoute: typeof AuthenticatedReservationsIdRoute
+}
+
+const AuthenticatedReservationsRouteChildren: AuthenticatedReservationsRouteChildren =
+  {
+    AuthenticatedReservationsIdRoute: AuthenticatedReservationsIdRoute,
+  }
+
+const AuthenticatedReservationsRouteWithChildren =
+  AuthenticatedReservationsRoute._addFileChildren(
+    AuthenticatedReservationsRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRouteWithChildren
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRouteWithChildren
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
-  AuthenticatedReservationsRoute: typeof AuthenticatedReservationsRoute
+  AuthenticatedReservationsRoute: typeof AuthenticatedReservationsRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
@@ -263,7 +297,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCustomersRoute: AuthenticatedCustomersRouteWithChildren,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRouteWithChildren,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
-  AuthenticatedReservationsRoute: AuthenticatedReservationsRoute,
+  AuthenticatedReservationsRoute: AuthenticatedReservationsRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

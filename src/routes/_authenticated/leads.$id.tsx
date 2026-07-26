@@ -2,10 +2,10 @@ import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Mail, MessageCircle, Plus } from "lucide-react";
+import { Mail, MessageCircle, Plus, ExternalLink, Globe } from "lucide-react";
 import { getLeadDetail, updateLead, deleteLead, addLeadInquiry, listPropertiesWithUnits } from "@/lib/data.functions";
-import { sourceLabel, stageLabel, type LeadSource, type LeadStage } from "@/lib/types";
-import { DetailLayout, SectionBar, FieldRow, EmptyState } from "@/components/detail/DetailLayout";
+import { sourceLabel, stageLabel, sourceTone, stageTone, type LeadSource, type LeadStage } from "@/lib/types";
+import { DetailLayout, SectionBar, FieldRow, EmptyState, TonePill } from "@/components/detail/DetailLayout";
 
 export const Route = createFileRoute("/_authenticated/leads/$id")({
   head: () => ({ meta: [{ title: "כרטיס ליד · Oriya OS" }] }),
@@ -41,16 +41,13 @@ function LeadDetailPage() {
   const [newInq, setNewInq] = useState({ source: lead.source as string, unit_id: "", check_in: "", check_out: "", guests: "", message: "" });
   const unitName = (uid: string | null) => pu.data.units.find((u) => u.id === uid)?.name ?? null;
 
-  const stageTone: Record<string, "success" | "info" | "gold" | "neutral" | "danger"> = {
-    new: "info", contacted: "gold", quoted: "gold", booked: "success", lost: "danger",
-  };
-
   return (
     <DetailLayout
       kicker="ליד"
       title={lead.full_name}
-      statusPill={{ label: stageLabel[lead.stage as LeadStage], tone: stageTone[lead.stage] ?? "neutral" }}
+      statusPill={{ label: stageLabel[lead.stage as LeadStage], tone: stageTone[lead.stage as LeadStage] ?? "neutral" }}
       onDelete={() => { if (confirm("למחוק ליד?")) delM.mutate(); }}
+      tags={<TonePill label={sourceLabel[lead.source as LeadSource]} tone={sourceTone[lead.source as LeadSource] ?? "neutral"} />}
       toolbar={<>
         {lead.phone && (
           <a href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
@@ -140,24 +137,50 @@ function LeadDetailPage() {
 
           {inquiries.length === 0 ? <EmptyState text="אין פניות מתועדות." /> : (
             <ul className="divide-y" style={{ borderColor: "var(--border)" }}>
-              {inquiries.map((i) => (
-                <li key={i.id} className="py-3">
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="rounded-full px-2 py-0.5 text-[11px]" style={{ backgroundColor: "var(--info-bg)", color: "var(--info)" }}>
-                      {sourceLabel[i.source as LeadSource] ?? i.source}
-                    </span>
-                    {unitName(i.unit_id) && <span className="font-medium">{unitName(i.unit_id)}</span>}
-                    {(i.check_in || i.check_out) && (
-                      <span className="ltr-num text-xs" style={{ color: "var(--text-secondary)" }}>
-                        {i.check_in ?? "—"} → {i.check_out ?? "—"}
-                      </span>
+              {inquiries.map((i: Record<string, string | number | null>) => {
+                const src = (i.source as LeadSource) ?? "other";
+                return (
+                  <li key={i.id as string} className="py-3">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <TonePill label={sourceLabel[src] ?? String(i.source)} tone={sourceTone[src] ?? "neutral"} />
+                      {i.form_name && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: "var(--navy-700)" }}>
+                          <Globe size={12} /> {String(i.form_name)}
+                        </span>
+                      )}
+                      {unitName(i.unit_id as string | null) && <span className="font-medium">{unitName(i.unit_id as string | null)}</span>}
+                      {(i.check_in || i.check_out) && (
+                        <span className="ltr-num text-xs" style={{ color: "var(--text-secondary)" }}>
+                          {(i.check_in as string) ?? "—"} → {(i.check_out as string) ?? "—"}
+                        </span>
+                      )}
+                      {i.guests && <span className="ltr-num text-xs" style={{ color: "var(--text-secondary)" }}>{i.guests} אורחים</span>}
+                      {i.nights && <span className="ltr-num text-xs" style={{ color: "var(--text-secondary)" }}>· {i.nights} לילות</span>}
+                      <span className="ltr-num ms-auto text-[11px]" style={{ color: "var(--text-secondary)" }}>{new Date(i.created_at as string).toLocaleString("he-IL")}</span>
+                    </div>
+                    {i.message && <div className="mt-1.5 rounded-md border p-2 text-sm" style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-subtle)", color: "var(--text-primary)" }}>{String(i.message)}</div>}
+                    {src === "website" && (
+                      <div className="mt-1.5 grid gap-1 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                        {i.page_url && (
+                          <a href={String(i.page_url)} target="_blank" rel="noreferrer"
+                            className="ltr-num inline-flex items-center gap-1 truncate underline"
+                            style={{ color: "var(--info)" }} dir="ltr">
+                            <ExternalLink size={11} /> {String(i.page_url)}
+                          </a>
+                        )}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 ltr-num" dir="ltr">
+                          {i.referrer && <span>ref: {String(i.referrer)}</span>}
+                          {i.utm_source && <span>utm_source: {String(i.utm_source)}</span>}
+                          {i.utm_campaign && <span>utm_campaign: {String(i.utm_campaign)}</span>}
+                          {i.guest_name && <span dir="rtl" style={{ color: "var(--text-primary)" }}>שם: {String(i.guest_name)}</span>}
+                          {i.phone && <span>{String(i.phone)}</span>}
+                          {i.email && <span>{String(i.email)}</span>}
+                        </div>
+                      </div>
                     )}
-                    {i.guests && <span className="ltr-num text-xs" style={{ color: "var(--text-secondary)" }}>{i.guests} אורחים</span>}
-                    <span className="ltr-num ms-auto text-[11px]" style={{ color: "var(--text-secondary)" }}>{new Date(i.created_at).toLocaleString("he-IL")}</span>
-                  </div>
-                  {i.message && <div className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>{i.message}</div>}
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

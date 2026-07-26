@@ -10,7 +10,7 @@ import { FilterChips } from "@/components/shell/FilterChips";
 import { listReservations, listPropertiesWithUnits, deleteReservation } from "@/lib/data.functions";
 import { channelLabel, statusLabel, type Channel, type Reservation, type ReservationStatus } from "@/lib/types";
 
-export const Route = createFileRoute("/_authenticated/reservations")({
+export const Route = createFileRoute("/_authenticated/reservations/")({
   head: () => ({
     meta: [
       { title: "הזמנות · Oriya OS" },

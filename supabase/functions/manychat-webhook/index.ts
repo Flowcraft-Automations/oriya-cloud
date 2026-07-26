@@ -62,9 +62,29 @@ Deno.serve(async (req) => {
       (body?.subscriber?.id != null ? String(body.subscriber.id) :
         (cf?.subscriber_id != null ? String(cf.subscriber_id) : null)));
 
-  const { data: existing } = await sb.from("leads")
-    .select("id, warmth, full_name, manychat_subscriber_id")
-    .eq("phone", phone).maybeSingle();
+  // Match by digits-only phone so "050-444-2233", "+972504442233" and "0504442233"
+  // all resolve to the same existing lead instead of creating duplicates.
+  const tail = phone.slice(-9); // last 9 digits (Israeli mobile without leading 0)
+  let existing: any = null;
+  if (manychat_subscriber_id) {
+    const { data } = await sb.from("leads")
+      .select("id, phone, warmth, full_name, manychat_subscriber_id")
+      .eq("manychat_subscriber_id", manychat_subscriber_id).maybeSingle();
+    existing = data ?? null;
+  }
+  if (!existing) {
+    // Phones in the DB can contain dashes/spaces/prefixes. LIKE on the raw string
+    // misses them, so pull recent leads with a phone and match on digits in JS.
+    const { data: candidates } = await sb.from("leads")
+      .select("id, phone, warmth, full_name, manychat_subscriber_id, created_at")
+      .not("phone", "is", null)
+      .order("created_at", { ascending: true })
+      .limit(1000);
+    existing = (candidates ?? []).find((c: any) => {
+      const d = String(c.phone ?? "").replace(/\D/g, "");
+      return d.length >= 8 && (d.endsWith(tail) || tail.endsWith(d.slice(-9)));
+    }) ?? null;
+  }
 
   const merged: Warmth = existing
     ? (rank[warmth] > rank[(existing.warmth as Warmth) ?? "cold"] ? warmth : ((existing.warmth as Warmth) ?? "cold"))

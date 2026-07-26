@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Trash2 } from "lucide-react";
@@ -25,6 +25,7 @@ export const Route = createFileRoute("/_authenticated/reservations")({
 
 function ReservationsPage() {
   const qc = useQueryClient();
+  const nav = useNavigate();
   const [statusFilter, setStatusFilter] = useState<"all" | ReservationStatus>("all");
   const lr = useServerFn(listReservations);
   const pu = useServerFn(listPropertiesWithUnits);
@@ -71,9 +72,14 @@ function ReservationsPage() {
             </thead>
             <tbody>
               {rows.map((r: Reservation) => (
-                <tr key={r.id} className="border-t hover:bg-[var(--bg-subtle)]" style={{ borderColor: "var(--border)" }}>
+                <tr
+                  key={r.id}
+                  onClick={() => nav({ to: "/reservations/$id", params: { id: r.id } })}
+                  className="cursor-pointer border-t hover:bg-[var(--bg-subtle)]"
+                  style={{ borderColor: "var(--border)" }}
+                >
                   <Td>
-                    <Link to="/reservations/$id" params={{ id: r.id }} className="font-medium hover:underline" style={{ color: "var(--text-primary)" }}>{r.guest_name}</Link>
+                    <span className="font-medium" style={{ color: "var(--text-primary)" }}>{r.guest_name}</span>
                     {r.phone && <div className="ltr-num text-[11px]" style={{ color: "var(--text-secondary)" }}>{r.phone}</div>}
                   </Td>
                   <Td>{unitName.get(r.unit_id) ?? "—"}</Td>
@@ -84,7 +90,7 @@ function ReservationsPage() {
                   <Td><OBadge tone={r.status === "confirmed" ? "success" : r.status === "cancelled" ? "danger" : "info"}>{statusLabel[r.status as ReservationStatus]}</OBadge></Td>
                   <Td>
                     <button
-                      onClick={() => { if (confirm("למחוק?")) delM.mutate(r.id); }}
+                      onClick={(e) => { e.stopPropagation(); if (confirm("למחוק?")) delM.mutate(r.id); }}
                       className="rounded p-1.5 hover:bg-[var(--bg-subtle)]"
                       aria-label="מחק"
                     >

@@ -1,3 +1,0 @@
-# Adds public webhook (no JWT). Merge into supabase/config.toml manually:
-# [functions.manychat-webhook]
-# verify_jwt = false

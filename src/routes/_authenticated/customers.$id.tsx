@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Mail, MessageCircle, Send, Star } from "lucide-react";
 import { getCustomerDetail, updateCustomer, deleteCustomer, listInvoicesByCustomer } from "@/lib/data.functions";
 import { channelLabel, statusLabel, statusTone, channelTone, type Channel, type ReservationStatus } from "@/lib/types";
-import { DetailLayout, SectionBar, FieldRow, EmptyState, TonePill } from "@/components/detail/DetailLayout";
+import { DetailLayout, SectionBar, FieldRow, EditableRow, EmptyState, TonePill } from "@/components/detail/DetailLayout";
 import { InvoicesTable } from "@/components/detail/InvoicesTable";
 
 export const Route = createFileRoute("/_authenticated/customers/$id")({
@@ -80,10 +80,10 @@ function CustomerDetailPage() {
       {tab === "profile" && (
         <div className="divide-y" style={{ borderColor: "var(--border)" }}>
           <SectionBar title="זהות" accent="var(--gold-100)" barColor="var(--gold-500)">
-            <FieldRow label="שם מלא" value={customer.full_name} />
-            <FieldRow label="אימייל" value={customer.email} ltr />
-            <FieldRow label="טלפון" value={customer.phone} ltr />
-            <FieldRow label="מספר זהות" value={customer.id_number} ltr />
+            <EditableRow label="שם מלא" value={customer.full_name} onSave={(v) => updM.mutate({ full_name: v })} />
+            <EditableRow label="אימייל" type="email" ltr value={customer.email} onSave={(v) => updM.mutate({ email: v })} />
+            <EditableRow label="טלפון" type="tel" ltr value={customer.phone} onSave={(v) => updM.mutate({ phone: v })} />
+            <EditableRow label="מספר זהות" ltr value={customer.id_number} onSave={(v) => updM.mutate({ id_number: v })} />
             <FieldRow label="שפה מועדפת" value="עברית" />
           </SectionBar>
           <SectionBar title="פעילות" accent="var(--info-bg)" barColor="var(--info)">
@@ -98,12 +98,8 @@ function CustomerDetailPage() {
             <FieldRow label="ממוצע להזמנה" value={reservations.length ? `₪${Math.round(totalSpent / reservations.length).toLocaleString()}` : null} ltr />
           </SectionBar>
           <SectionBar title="הערות" accent="var(--bg-subtle)" barColor="var(--border)">
-            <div className="p-4">
-              <textarea rows={4} defaultValue={customer.notes ?? ""}
-                onBlur={(e) => e.target.value !== (customer.notes ?? "") && updM.mutate({ notes: e.target.value })}
-                className="w-full rounded-md border p-3 text-sm" style={{ borderColor: "var(--border)" }}
-                placeholder="הערות פנימיות…" />
-            </div>
+            <EditableRow label="הערות" type="textarea" value={customer.notes} placeholder="הערות פנימיות…"
+              onSave={(v) => updM.mutate({ notes: v })} />
           </SectionBar>
         </div>
       )}

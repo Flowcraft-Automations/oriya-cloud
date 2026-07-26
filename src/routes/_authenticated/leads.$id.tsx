@@ -92,7 +92,7 @@ function LeadDetailPage() {
             <form className="grid gap-2 sm:grid-cols-6" onSubmit={(e) => {
               e.preventDefault();
               inqM.mutate({
-                source: newInq.source,
+                source: newInq.source as LeadSource,
                 unit_id: newInq.unit_id || null,
                 check_in: newInq.check_in || null,
                 check_out: newInq.check_out || null,

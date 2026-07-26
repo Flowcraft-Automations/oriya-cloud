@@ -17,6 +17,7 @@ import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedLeadsIdRouteImport } from './routes/_authenticated/leads.$id'
 import { Route as AuthenticatedCustomersIdRouteImport } from './routes/_authenticated/customers.$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -59,6 +60,11 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLeadsIdRoute = AuthenticatedLeadsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedLeadsRoute,
+} as any)
 const AuthenticatedCustomersIdRoute =
   AuthenticatedCustomersIdRouteImport.update({
     id: '/$id',
@@ -71,20 +77,22 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/customers': typeof AuthenticatedCustomersRouteWithChildren
-  '/leads': typeof AuthenticatedLeadsRoute
+  '/leads': typeof AuthenticatedLeadsRouteWithChildren
   '/properties': typeof AuthenticatedPropertiesRoute
   '/reservations': typeof AuthenticatedReservationsRoute
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
+  '/leads/$id': typeof AuthenticatedLeadsIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/customers': typeof AuthenticatedCustomersRouteWithChildren
-  '/leads': typeof AuthenticatedLeadsRoute
+  '/leads': typeof AuthenticatedLeadsRouteWithChildren
   '/properties': typeof AuthenticatedPropertiesRoute
   '/reservations': typeof AuthenticatedReservationsRoute
   '/': typeof AuthenticatedIndexRoute
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
+  '/leads/$id': typeof AuthenticatedLeadsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -92,11 +100,12 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/customers': typeof AuthenticatedCustomersRouteWithChildren
-  '/_authenticated/leads': typeof AuthenticatedLeadsRoute
+  '/_authenticated/leads': typeof AuthenticatedLeadsRouteWithChildren
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
   '/_authenticated/reservations': typeof AuthenticatedReservationsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/customers/$id': typeof AuthenticatedCustomersIdRoute
+  '/_authenticated/leads/$id': typeof AuthenticatedLeadsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/reservations'
     | '/customers/$id'
+    | '/leads/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/'
     | '/customers/$id'
+    | '/leads/$id'
   id:
     | '__root__'
     | '/_authenticated'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reservations'
     | '/_authenticated/'
     | '/_authenticated/customers/$id'
+    | '/_authenticated/leads/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -195,6 +207,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/leads/$id': {
+      id: '/_authenticated/leads/$id'
+      path: '/$id'
+      fullPath: '/leads/$id'
+      preLoaderRoute: typeof AuthenticatedLeadsIdRouteImport
+      parentRoute: typeof AuthenticatedLeadsRoute
+    }
     '/_authenticated/customers/$id': {
       id: '/_authenticated/customers/$id'
       path: '/$id'
@@ -219,10 +238,21 @@ const AuthenticatedCustomersRouteWithChildren =
     AuthenticatedCustomersRouteChildren,
   )
 
+interface AuthenticatedLeadsRouteChildren {
+  AuthenticatedLeadsIdRoute: typeof AuthenticatedLeadsIdRoute
+}
+
+const AuthenticatedLeadsRouteChildren: AuthenticatedLeadsRouteChildren = {
+  AuthenticatedLeadsIdRoute: AuthenticatedLeadsIdRoute,
+}
+
+const AuthenticatedLeadsRouteWithChildren =
+  AuthenticatedLeadsRoute._addFileChildren(AuthenticatedLeadsRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRouteWithChildren
-  AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
+  AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRouteWithChildren
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
   AuthenticatedReservationsRoute: typeof AuthenticatedReservationsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -231,7 +261,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedCustomersRoute: AuthenticatedCustomersRouteWithChildren,
-  AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
+  AuthenticatedLeadsRoute: AuthenticatedLeadsRouteWithChildren,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
   AuthenticatedReservationsRoute: AuthenticatedReservationsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,

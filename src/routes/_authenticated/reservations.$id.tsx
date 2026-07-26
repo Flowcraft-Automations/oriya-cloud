@@ -256,3 +256,73 @@ function ReservationDetailPage() {
     </DetailLayout>
   );
 }
+
+function ActionBar({
+  busy, toast, linkUrl, onGen, onPayWa, onPayMail, onConfWa, onConfMail, onCopy,
+}: {
+  busy: boolean;
+  toast: { tone: "ok" | "warn" | "err"; text: string } | null;
+  linkUrl: string | null;
+  onGen: () => void; onPayWa: () => void; onPayMail: () => void;
+  onConfWa: () => void; onConfMail: () => void; onCopy: () => void;
+}) {
+  const toneBg = toast?.tone === "ok" ? "var(--success-bg, #E7F5EE)"
+    : toast?.tone === "warn" ? "var(--warning-bg, #FFF4E0)"
+    : toast?.tone === "err" ? "var(--danger-bg, #FDECEC)" : "transparent";
+  const toneFg = toast?.tone === "ok" ? "#166534"
+    : toast?.tone === "warn" ? "#8A5A00"
+    : toast?.tone === "err" ? "#9B1C1C" : "inherit";
+
+  return (
+    <div className="border-b" style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-subtle)" }}>
+      <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+        <span className="text-[11px] uppercase tracking-widest me-1" style={{ color: "var(--text-secondary)" }}>פעולות</span>
+
+        <ActionBtn icon={<LinkIcon size={13} />} label="צור קישור תשלום" onClick={onGen} disabled={busy} accent primary />
+        <ActionBtn icon={<MessageCircle size={13} />} label="קישור תשלום · וואטסאפ" onClick={onPayWa} disabled={busy} />
+        <ActionBtn icon={<Mail size={13} />} label="קישור תשלום · אימייל" onClick={onPayMail} disabled={busy} />
+
+        <span className="mx-1 h-4 w-px" style={{ backgroundColor: "var(--border)" }} />
+
+        <ActionBtn icon={<CheckCircle2 size={13} />} label="אישור הזמנה · וואטסאפ" onClick={onConfWa} disabled={busy} />
+        <ActionBtn icon={<Mail size={13} />} label="אישור הזמנה · אימייל" onClick={onConfMail} disabled={busy} />
+
+        {linkUrl && (
+          <div className="ms-auto flex items-center gap-2 rounded-md border px-2 py-1 text-xs" style={{ borderColor: "var(--border)", backgroundColor: "#fff" }}>
+            <span dir="ltr" className="max-w-[260px] truncate font-mono" style={{ color: "var(--text-secondary)" }}>{linkUrl}</span>
+            <button onClick={onCopy} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-[var(--bg-subtle)]" title="העתק">
+              <Copy size={12} /> העתק
+            </button>
+            <a href={linkUrl} target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--navy-700)" }}>פתח</a>
+          </div>
+        )}
+      </div>
+      {toast && (
+        <div className="px-4 pb-3 text-xs">
+          <div className="inline-flex items-center rounded-md px-2.5 py-1" style={{ backgroundColor: toneBg, color: toneFg }}>
+            {toast.text}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActionBtn({ icon, label, onClick, disabled, primary, accent }: {
+  icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; primary?: boolean; accent?: boolean;
+}) {
+  const base = "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50";
+  if (primary) {
+    return (
+      <button onClick={onClick} disabled={disabled} className={base + " text-white"} style={{ backgroundColor: "var(--navy-900)" }}>
+        {icon}{label}
+      </button>
+    );
+  }
+  return (
+    <button onClick={onClick} disabled={disabled} className={base + " border hover:bg-white"}
+      style={{ borderColor: accent ? "var(--gold-500)" : "var(--border)", color: "var(--text-primary)", backgroundColor: "#fff" }}>
+      {icon}{label}
+    </button>
+  );
+}

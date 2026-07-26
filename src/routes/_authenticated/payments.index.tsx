@@ -47,7 +47,7 @@ function PaymentsPage() {
         <StatCard label="סה״כ חשבוניות" value={String(q.data.length)} tone="info" />
       </div>
 
-      <FilterChips items={chips} value={filter} onChange={setFilter} />
+      <FilterChips chips={chips} value={filter} onChange={setFilter} />
 
       <div className="mt-4 overflow-hidden rounded-lg border bg-white" style={{ borderColor: "var(--border)" }}>
         {rows.length === 0 ? (

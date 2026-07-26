@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
 import { Route as AuthenticatedMarketingRouteImport } from './routes/_authenticated/marketing'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
@@ -37,6 +38,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const PayTokenRoute = PayTokenRouteImport.update({
+  id: '/pay/$token',
+  path: '/pay/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedPropertiesRoute = AuthenticatedPropertiesRouteImport.update({
   id: '/properties',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof AuthenticatedCalendarRoute
   '/marketing': typeof AuthenticatedMarketingRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/pay/$token': typeof PayTokenRoute
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
   '/payments/$id': typeof AuthenticatedPaymentsIdRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof AuthenticatedCalendarRoute
   '/marketing': typeof AuthenticatedMarketingRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/pay/$token': typeof PayTokenRoute
   '/': typeof AuthenticatedIndexRoute
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/marketing': typeof AuthenticatedMarketingRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
+  '/pay/$token': typeof PayTokenRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/_authenticated/leads/$id': typeof AuthenticatedLeadsIdRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/marketing'
     | '/properties'
+    | '/pay/$token'
     | '/customers/$id'
     | '/leads/$id'
     | '/payments/$id'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/marketing'
     | '/properties'
+    | '/pay/$token'
     | '/'
     | '/customers/$id'
     | '/leads/$id'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/_authenticated/calendar'
     | '/_authenticated/marketing'
     | '/_authenticated/properties'
+    | '/pay/$token'
     | '/_authenticated/'
     | '/_authenticated/customers/$id'
     | '/_authenticated/leads/$id'
@@ -198,6 +210,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  PayTokenRoute: typeof PayTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -222,6 +235,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/pay/$token': {
+      id: '/pay/$token'
+      path: '/pay/$token'
+      fullPath: '/pay/$token'
+      preLoaderRoute: typeof PayTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/properties': {
       id: '/_authenticated/properties'
@@ -339,6 +359,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  PayTokenRoute: PayTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

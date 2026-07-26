@@ -105,6 +105,29 @@ export const sendJourneyTest = createServerFn({ method: "POST" })
 
 // ---------- Messages ----------
 
+export const listCustomerEnrollments = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { customer_id: string }) =>
+    z.object({ customer_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("journey_enrollments")
+      .select("*, wa_journeys(key, name_he)")
+      .eq("customer_id", data.customer_id)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    const codes = Array.from(new Set((rows ?? []).map((r: any) => r.current_step_code).filter(Boolean)));
+    let stepMap: Record<string, any> = {};
+    if (codes.length) {
+      const { data: steps } = await context.supabase
+        .from("wa_journey_steps")
+        .select("step_code, name_he, wait_hours, template_id, wa_templates(name, body_he, category)")
+        .in("step_code", codes as string[]);
+      stepMap = Object.fromEntries((steps ?? []).map((s: any) => [s.step_code, s]));
+    }
+    return (rows ?? []).map((r: any) => ({ ...r, step: stepMap[r.current_step_code] ?? null }));
+  });
+
 export const listMessages = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { customer_id?: string; reservation_id?: string; campaign_id?: string; phone?: string; limit?: number }) =>

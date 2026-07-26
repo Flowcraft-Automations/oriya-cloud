@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Mail, MessageCircle, Plus, ExternalLink, Globe } from "lucide-react";
+import { Mail, MessageCircle, MessageSquare, Plus, ExternalLink, Globe } from "lucide-react";
 import { getLeadDetail, updateLead, deleteLead, addLeadInquiry, listPropertiesWithUnits } from "@/lib/data.functions";
 import { sourceLabel, stageLabel, sourceTone, stageTone, type LeadSource, type LeadStage } from "@/lib/types";
 import { DetailLayout, SectionBar, FieldRow, EditableRow, EmptyState, TonePill } from "@/components/detail/DetailLayout";
 import { MarketingPanel } from "@/components/marketing/MarketingPanel";
+import { supabase } from "@/integrations/supabase/client";
+
+const MANYCHAT_WORKSPACE = "fb3418755";
 
 export const Route = createFileRoute("/_authenticated/leads/$id")({
   head: () => ({ meta: [{ title: "כרטיס ליד · Oriya OS" }] }),
@@ -32,6 +35,17 @@ function LeadDetailPage() {
   const q = useSuspenseQuery({ queryKey: ["lead", id], queryFn: () => get({ data: { id } }) });
   const pu = useSuspenseQuery({ queryKey: ["properties-units"], queryFn: () => listPU() });
   const { lead, inquiries } = q.data;
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`lead-live-${id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `id=eq.${id}` },
+        () => qc.invalidateQueries({ queryKey: ["lead", id] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "lead_inquiries", filter: `lead_id=eq.${id}` },
+        () => qc.invalidateQueries({ queryKey: ["lead", id] }))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [id, qc]);
 
   const updM = useMutation({ mutationFn: (p: Record<string, unknown>) => upd({ data: { id, ...p } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["lead", id] }) });
   const delM = useMutation({ mutationFn: () => del({ data: { id } }), onSuccess: () => nav({ to: "/leads" }) });
@@ -61,6 +75,14 @@ function LeadDetailPage() {
             className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs"
             style={{ borderColor: "var(--success)", color: "var(--success)" }}>
             <MessageCircle size={12} /> WhatsApp
+          </a>
+        )}
+        {(lead as any).manychat_subscriber_id && (
+          <a href={`https://app.manychat.com/${MANYCHAT_WORKSPACE}/chat/${(lead as any).manychat_subscriber_id}`}
+            target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs"
+            style={{ borderColor: "var(--navy-700)", color: "var(--navy-700)" }}>
+            <MessageSquare size={12} /> ManyChat
           </a>
         )}
         {lead.email && (

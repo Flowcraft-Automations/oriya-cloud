@@ -153,7 +153,7 @@ export const listMessages = createServerFn({ method: "GET" })
     return rows ?? [];
   });
 
-async function insertMessageWithGuards(
+export async function insertMessageWithGuards(
   supabase: any,
   args: { customer_id?: string | null; reservation_id?: string | null; template_name: string; phone: string; campaign_id?: string | null; journey_step_id?: string | null; vars?: Record<string, string> },
 ): Promise<{ ok: boolean; skipped_reason?: string; scheduled_for?: string }> {

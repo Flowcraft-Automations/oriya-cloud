@@ -244,6 +244,8 @@ export type Database = {
           issue_date: string
           notes: string | null
           owner_id: string
+          payment_link_created_at: string | null
+          payment_link_token: string | null
           reservation_id: string | null
           status: string
           tax: number
@@ -260,6 +262,8 @@ export type Database = {
           issue_date?: string
           notes?: string | null
           owner_id: string
+          payment_link_created_at?: string | null
+          payment_link_token?: string | null
           reservation_id?: string | null
           status?: string
           tax?: number
@@ -276,6 +280,8 @@ export type Database = {
           issue_date?: string
           notes?: string | null
           owner_id?: string
+          payment_link_created_at?: string | null
+          payment_link_token?: string | null
           reservation_id?: string | null
           status?: string
           tax?: number

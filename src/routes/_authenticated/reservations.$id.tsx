@@ -2,8 +2,15 @@ import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { User, Plus, Home, Link2 } from "lucide-react";
+import { User, Plus, Home, Link2, Link as LinkIcon, MessageCircle, Mail, CheckCircle2, Copy } from "lucide-react";
 import { getReservationDetail, updateReservation, deleteReservation, listInvoicesByReservation, createInvoice } from "@/lib/data.functions";
+import {
+  generatePaymentLink,
+  sendPaymentLinkWhatsapp,
+  sendPaymentLinkEmail,
+  sendBookingConfirmationWhatsapp,
+  sendBookingConfirmationEmail,
+} from "@/lib/orders.functions";
 import { channelLabel, statusLabel, statusTone, channelTone, type Channel, type ReservationStatus } from "@/lib/types";
 import { DetailLayout, SectionBar, FieldRow, EditableRow, TonePill } from "@/components/detail/DetailLayout";
 import { channelLabel as chLabel } from "@/lib/types";
@@ -26,6 +33,11 @@ function ReservationDetailPage() {
   const del = useServerFn(deleteReservation);
   const listInv = useServerFn(listInvoicesByReservation);
   const createInv = useServerFn(createInvoice);
+  const genLink = useServerFn(generatePaymentLink);
+  const sendPayWa = useServerFn(sendPaymentLinkWhatsapp);
+  const sendPayMail = useServerFn(sendPaymentLinkEmail);
+  const sendConfWa = useServerFn(sendBookingConfirmationWhatsapp);
+  const sendConfMail = useServerFn(sendBookingConfirmationEmail);
 
   const q = useSuspenseQuery({ queryKey: ["reservation", id], queryFn: () => get({ data: { id } }) });
   const inv = useSuspenseQuery({ queryKey: ["invoices", "reservation", id], queryFn: () => listInv({ data: { reservation_id: id } }) });
@@ -41,6 +53,58 @@ function ReservationDetailPage() {
   const [tab, setTab] = useState<Tab>("details");
   const [review, setReview] = useState(reservation.review ?? "");
   const balance = Number(reservation.total_amount ?? 0) - Number(reservation.paid_amount ?? 0);
+  const [toast, setToast] = useState<{ tone: "ok" | "warn" | "err"; text: string } | null>(null);
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
+
+  function flash(tone: "ok" | "warn" | "err", text: string) {
+    setToast({ tone, text });
+    setTimeout(() => setToast(null), 3500);
+  }
+
+  function describe(res: { ok: boolean; skipped_reason?: string; url?: string; scheduled_for?: string }, kind: string) {
+    if (res.ok) {
+      const when = res.scheduled_for ? ` (מתוזמן ל־${new Date(res.scheduled_for).toLocaleString("he-IL")})` : "";
+      flash("ok", `${kind} נשלח${when}`);
+    } else if (res.skipped_reason === "no_email") flash("warn", "אין כתובת אימייל ללקוח");
+    else if (res.skipped_reason === "duplicate_48h") flash("warn", "כבר נשלחה הודעה זהה ב־48 השעות האחרונות");
+    else if (res.skipped_reason === "opted_out") flash("warn", "הלקוח ביטל הסכמת שיווק");
+    else if (res.skipped_reason === "template_not_approved") flash("warn", "התבנית טרם אושרה");
+    else flash("err", `נכשל: ${res.skipped_reason ?? "שגיאה לא ידועה"}`);
+  }
+
+  const genM = useMutation({
+    mutationFn: () => genLink({ data: { reservation_id: id } }),
+    onSuccess: (r) => { setLinkUrl(r.url); flash("ok", "קישור תשלום נוצר"); qc.invalidateQueries({ queryKey: ["invoices", "reservation", id] }); },
+    onError: (e: Error) => flash("err", e.message),
+  });
+  const payWaM = useMutation({
+    mutationFn: () => sendPayWa({ data: { reservation_id: id } }),
+    onSuccess: (r) => { if (r.url) setLinkUrl(r.url); describe(r, "קישור תשלום בוואטסאפ"); qc.invalidateQueries({ queryKey: ["invoices", "reservation", id] }); },
+    onError: (e: Error) => flash("err", e.message),
+  });
+  const payMailM = useMutation({
+    mutationFn: () => sendPayMail({ data: { reservation_id: id } }),
+    onSuccess: (r) => { describe(r, "קישור תשלום באימייל"); qc.invalidateQueries({ queryKey: ["invoices", "reservation", id] }); },
+    onError: (e: Error) => flash("err", e.message),
+  });
+  const confWaM = useMutation({
+    mutationFn: () => sendConfWa({ data: { reservation_id: id } }),
+    onSuccess: (r) => describe(r, "אישור הזמנה בוואטסאפ"),
+    onError: (e: Error) => flash("err", e.message),
+  });
+  const confMailM = useMutation({
+    mutationFn: () => sendConfMail({ data: { reservation_id: id } }),
+    onSuccess: (r) => describe(r, "אישור הזמנה באימייל"),
+    onError: (e: Error) => flash("err", e.message),
+  });
+
+  async function copyLink() {
+    if (!linkUrl) return;
+    try { await navigator.clipboard.writeText(linkUrl); flash("ok", "הקישור הועתק"); }
+    catch { flash("err", "העתקה נכשלה"); }
+  }
+
+  const anyBusy = genM.isPending || payWaM.isPending || payMailM.isPending || confWaM.isPending || confMailM.isPending;
 
   return (
     <DetailLayout
@@ -76,6 +140,18 @@ function ReservationDetailPage() {
       activeTab={tab}
       onTabChange={(k) => setTab(k as Tab)}
     >
+      <ActionBar
+        busy={anyBusy}
+        toast={toast}
+        linkUrl={linkUrl}
+        onGen={() => genM.mutate()}
+        onPayWa={() => payWaM.mutate()}
+        onPayMail={() => payMailM.mutate()}
+        onConfWa={() => confWaM.mutate()}
+        onConfMail={() => confMailM.mutate()}
+        onCopy={copyLink}
+      />
+
       {tab === "details" && (
         <div className="divide-y" style={{ borderColor: "var(--border)" }}>
           <SectionBar title="נכס וערוץ" accent="var(--gold-100)" barColor="var(--gold-500)">
@@ -178,5 +254,75 @@ function ReservationDetailPage() {
         </>
       )}
     </DetailLayout>
+  );
+}
+
+function ActionBar({
+  busy, toast, linkUrl, onGen, onPayWa, onPayMail, onConfWa, onConfMail, onCopy,
+}: {
+  busy: boolean;
+  toast: { tone: "ok" | "warn" | "err"; text: string } | null;
+  linkUrl: string | null;
+  onGen: () => void; onPayWa: () => void; onPayMail: () => void;
+  onConfWa: () => void; onConfMail: () => void; onCopy: () => void;
+}) {
+  const toneBg = toast?.tone === "ok" ? "var(--success-bg, #E7F5EE)"
+    : toast?.tone === "warn" ? "var(--warning-bg, #FFF4E0)"
+    : toast?.tone === "err" ? "var(--danger-bg, #FDECEC)" : "transparent";
+  const toneFg = toast?.tone === "ok" ? "#166534"
+    : toast?.tone === "warn" ? "#8A5A00"
+    : toast?.tone === "err" ? "#9B1C1C" : "inherit";
+
+  return (
+    <div className="border-b" style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-subtle)" }}>
+      <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+        <span className="text-[11px] uppercase tracking-widest me-1" style={{ color: "var(--text-secondary)" }}>פעולות</span>
+
+        <ActionBtn icon={<LinkIcon size={13} />} label="צור קישור תשלום" onClick={onGen} disabled={busy} accent primary />
+        <ActionBtn icon={<MessageCircle size={13} />} label="קישור תשלום · וואטסאפ" onClick={onPayWa} disabled={busy} />
+        <ActionBtn icon={<Mail size={13} />} label="קישור תשלום · אימייל" onClick={onPayMail} disabled={busy} />
+
+        <span className="mx-1 h-4 w-px" style={{ backgroundColor: "var(--border)" }} />
+
+        <ActionBtn icon={<CheckCircle2 size={13} />} label="אישור הזמנה · וואטסאפ" onClick={onConfWa} disabled={busy} />
+        <ActionBtn icon={<Mail size={13} />} label="אישור הזמנה · אימייל" onClick={onConfMail} disabled={busy} />
+
+        {linkUrl && (
+          <div className="ms-auto flex items-center gap-2 rounded-md border px-2 py-1 text-xs" style={{ borderColor: "var(--border)", backgroundColor: "#fff" }}>
+            <span dir="ltr" className="max-w-[260px] truncate font-mono" style={{ color: "var(--text-secondary)" }}>{linkUrl}</span>
+            <button onClick={onCopy} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-[var(--bg-subtle)]" title="העתק">
+              <Copy size={12} /> העתק
+            </button>
+            <a href={linkUrl} target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--navy-700)" }}>פתח</a>
+          </div>
+        )}
+      </div>
+      {toast && (
+        <div className="px-4 pb-3 text-xs">
+          <div className="inline-flex items-center rounded-md px-2.5 py-1" style={{ backgroundColor: toneBg, color: toneFg }}>
+            {toast.text}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActionBtn({ icon, label, onClick, disabled, primary, accent }: {
+  icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; primary?: boolean; accent?: boolean;
+}) {
+  const base = "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50";
+  if (primary) {
+    return (
+      <button onClick={onClick} disabled={disabled} className={base + " text-white"} style={{ backgroundColor: "var(--navy-900)" }}>
+        {icon}{label}
+      </button>
+    );
+  }
+  return (
+    <button onClick={onClick} disabled={disabled} className={base + " border hover:bg-white"}
+      style={{ borderColor: accent ? "var(--gold-500)" : "var(--border)", color: "var(--text-primary)", backgroundColor: "#fff" }}>
+      {icon}{label}
+    </button>
   );
 }

@@ -641,3 +641,126 @@ export const getDashboardData = createServerFn({ method: "GET" })
         })) ?? [],
     };
   });
+
+// ---------- Invoices ----------
+
+export const listInvoices = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [{ data: invoices, error }, { data: customers }] = await Promise.all([
+      context.supabase
+        .from("invoices")
+        .select("id, invoice_number, customer_id, reservation_id, issue_date, due_date, amount, tax, total, status, created_at")
+        .order("issue_date", { ascending: false }),
+      context.supabase.from("customers").select("id, full_name"),
+    ]);
+    if (error) throw new Error(error.message);
+    const cMap = new Map((customers ?? []).map((c) => [c.id, c.full_name]));
+    return (invoices ?? []).map((inv) => ({
+      ...inv,
+      customer_name: inv.customer_id ? cMap.get(inv.customer_id) ?? null : null,
+    }));
+  });
+
+export const getInvoice = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: invoice, error } = await context.supabase
+      .from("invoices").select("*").eq("id", data.id).single();
+    if (error || !invoice) throw new Error("Invoice not found");
+    const [{ data: customer }, { data: reservation }] = await Promise.all([
+      invoice.customer_id
+        ? context.supabase.from("customers").select("id, full_name, phone, email").eq("id", invoice.customer_id).single()
+        : Promise.resolve({ data: null }),
+      invoice.reservation_id
+        ? context.supabase.from("reservations").select("id, guest_name, check_in, check_out, nights, channel, status, total_amount, unit_id").eq("id", invoice.reservation_id).single()
+        : Promise.resolve({ data: null }),
+    ]);
+    return { invoice, customer, reservation };
+  });
+
+export const createInvoice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    customer_id?: string | null; reservation_id?: string | null;
+    invoice_number?: string; issue_date?: string; due_date?: string | null;
+    amount: number; tax?: number; total?: number; status?: string; notes?: string | null;
+  }) => z.object({
+    customer_id: z.string().uuid().nullable().optional(),
+    reservation_id: z.string().uuid().nullable().optional(),
+    invoice_number: z.string().min(1).optional(),
+    issue_date: z.string().optional(),
+    due_date: z.string().nullable().optional(),
+    amount: z.number().nonnegative(),
+    tax: z.number().nonnegative().optional(),
+    total: z.number().nonnegative().optional(),
+    status: z.enum(["draft","sent","paid","overdue","cancelled"]).optional(),
+    notes: z.string().nullable().optional(),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const tax = data.tax ?? Math.round(data.amount * 0.17 * 100) / 100;
+    const total = data.total ?? Math.round((data.amount + tax) * 100) / 100;
+    const invoice_number = data.invoice_number ?? `INV-${new Date().toISOString().slice(0,7).replace("-","")}-${Math.floor(Math.random()*9000+1000)}`;
+    const { data: row, error } = await context.supabase
+      .from("invoices")
+      .insert({ ...data, tax, total, invoice_number, owner_id: context.userId })
+      .select().single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
+export const updateInvoice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; amount?: number; tax?: number; total?: number; status?: string; due_date?: string | null; notes?: string | null; invoice_number?: string }) =>
+    z.object({
+      id: z.string().uuid(),
+      amount: z.number().nonnegative().optional(),
+      tax: z.number().nonnegative().optional(),
+      total: z.number().nonnegative().optional(),
+      status: z.enum(["draft","sent","paid","overdue","cancelled"]).optional(),
+      due_date: z.string().nullable().optional(),
+      notes: z.string().nullable().optional(),
+      invoice_number: z.string().min(1).optional(),
+    }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { id, ...patch } = data;
+    const { error } = await context.supabase.from("invoices").update(patch).eq("id", id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteInvoice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("invoices").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const listInvoicesByCustomer = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { customer_id: string }) => z.object({ customer_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("invoices")
+      .select("id, invoice_number, issue_date, due_date, total, status, reservation_id")
+      .eq("customer_id", data.customer_id)
+      .order("issue_date", { ascending: false });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+export const listInvoicesByReservation = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { reservation_id: string }) => z.object({ reservation_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("invoices")
+      .select("id, invoice_number, issue_date, due_date, total, status")
+      .eq("reservation_id", data.reservation_id)
+      .order("issue_date", { ascending: false });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });

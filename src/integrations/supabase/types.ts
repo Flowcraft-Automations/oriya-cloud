@@ -14,6 +14,73 @@ export type Database = {
   }
   public: {
     Tables: {
+      communications: {
+        Row: {
+          body: string | null
+          campaign_id: string | null
+          channel: string
+          created_at: string
+          customer_id: string | null
+          direction: string
+          id: string
+          lead_id: string | null
+          owner_id: string
+          sent_at: string
+          status: string | null
+          subject: string | null
+        }
+        Insert: {
+          body?: string | null
+          campaign_id?: string | null
+          channel: string
+          created_at?: string
+          customer_id?: string | null
+          direction?: string
+          id?: string
+          lead_id?: string | null
+          owner_id: string
+          sent_at?: string
+          status?: string | null
+          subject?: string | null
+        }
+        Update: {
+          body?: string | null
+          campaign_id?: string | null
+          channel?: string
+          created_at?: string
+          customer_id?: string | null
+          direction?: string
+          id?: string
+          lead_id?: string | null
+          owner_id?: string
+          sent_at?: string
+          status?: string | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communications_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string
@@ -52,6 +119,70 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      lead_inquiries: {
+        Row: {
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          guests: number | null
+          id: string
+          lead_id: string
+          message: string | null
+          owner_id: string
+          property_id: string | null
+          source: string
+          unit_id: string | null
+        }
+        Insert: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          guests?: number | null
+          id?: string
+          lead_id: string
+          message?: string | null
+          owner_id: string
+          property_id?: string | null
+          source: string
+          unit_id?: string | null
+        }
+        Update: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          guests?: number | null
+          id?: string
+          lead_id?: string
+          message?: string | null
+          owner_id?: string
+          property_id?: string | null
+          source?: string
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_inquiries_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_inquiries_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_inquiries_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       leads: {
         Row: {
@@ -241,6 +372,8 @@ export type Database = {
           owner_id: string
           paid_amount: number
           phone: string | null
+          rating: number | null
+          review: string | null
           status: Database["public"]["Enums"]["reservation_status"]
           total_amount: number
           unit_id: string
@@ -261,6 +394,8 @@ export type Database = {
           owner_id: string
           paid_amount?: number
           phone?: string | null
+          rating?: number | null
+          review?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
           total_amount?: number
           unit_id: string
@@ -281,6 +416,8 @@ export type Database = {
           owner_id?: string
           paid_amount?: number
           phone?: string | null
+          rating?: number | null
+          review?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
           total_amount?: number
           unit_id?: string

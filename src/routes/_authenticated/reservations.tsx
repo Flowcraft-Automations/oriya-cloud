@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Trash2 } from "lucide-react";
@@ -71,9 +71,9 @@ function ReservationsPage() {
             </thead>
             <tbody>
               {rows.map((r: Reservation) => (
-                <tr key={r.id} className="border-t" style={{ borderColor: "var(--border)" }}>
+                <tr key={r.id} className="border-t hover:bg-[var(--bg-subtle)]" style={{ borderColor: "var(--border)" }}>
                   <Td>
-                    <div className="font-medium" style={{ color: "var(--text-primary)" }}>{r.guest_name}</div>
+                    <Link to="/reservations/$id" params={{ id: r.id }} className="font-medium hover:underline" style={{ color: "var(--text-primary)" }}>{r.guest_name}</Link>
                     {r.phone && <div className="ltr-num text-[11px]" style={{ color: "var(--text-secondary)" }}>{r.phone}</div>}
                   </Td>
                   <Td>{unitName.get(r.unit_id) ?? "—"}</Td>

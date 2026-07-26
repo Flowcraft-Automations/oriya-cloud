@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Trash2 } from "lucide-react";
@@ -83,10 +83,10 @@ function LeadsPage() {
               </div>
               <div className="space-y-2">
                 {items.map((l: Lead) => (
-                  <div key={l.id} className="rounded-md border p-2.5" style={{ borderColor: "var(--border)" }}>
+                  <div key={l.id} className="rounded-md border p-2.5 hover:bg-[var(--bg-subtle)]" style={{ borderColor: "var(--border)" }}>
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{l.full_name}</div>
+                        <Link to="/leads/$id" params={{ id: l.id }} className="text-sm font-medium hover:underline" style={{ color: "var(--text-primary)" }}>{l.full_name}</Link>
                         <div className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
                           {sourceLabel[l.source as LeadSource]} {l.interest && `· ${l.interest}`}
                         </div>

@@ -1074,3 +1074,174 @@ export const getFinancialDashboard = createServerFn({ method: "GET" })
       topCustomers,
     };
   });
+
+// ---------- Dashboard KPI drill-through ----------
+
+export type DrillKey =
+  | "staying_now" | "arrivals_today" | "departures_today"
+  | "occupancy_month" | "avg_stay" | "cancel_rate"
+  | "new_leads_month" | "open_leads" | "conversion" | "inquiries_week" | "total_inquiries"
+  | "revenue_month" | "outstanding" | "overdue" | "adr" | "revpar" | "open_invoices";
+
+export type DrillLinkTo = "reservation" | "lead" | "inquiry" | "invoice" | "customer";
+export type DrillRow = {
+  id: string;
+  primary: string;
+  secondary?: string | null;
+  pill?: { label: string; tone: string } | null;
+  amount?: string | null;
+  linkTo: DrillLinkTo;
+  linkId: string;
+};
+
+const drillKeys = [
+  "staying_now","arrivals_today","departures_today","occupancy_month","avg_stay","cancel_rate",
+  "new_leads_month","open_leads","conversion","inquiries_week","total_inquiries",
+  "revenue_month","outstanding","overdue","adr","revpar","open_invoices",
+] as const;
+
+const drillTitles: Record<DrillKey, string> = {
+  staying_now: "שוהים עכשיו",
+  arrivals_today: "הגעות היום",
+  departures_today: "עזיבות היום",
+  occupancy_month: "הזמנות פעילות החודש",
+  avg_stay: "שהיות ב-30 יום",
+  cancel_rate: "ביטולים ב-30 יום",
+  new_leads_month: "לידים חדשים החודש",
+  open_leads: "לידים פתוחים",
+  conversion: "לידים שהומרו להזמנה",
+  inquiries_week: "פניות בשבוע האחרון",
+  total_inquiries: "כל הפניות",
+  revenue_month: "חשבוניות ששולמו החודש",
+  outstanding: "חשבוניות פתוחות",
+  overdue: "חשבוניות בפיגור",
+  adr: "לילות מוזמנים (30 יום)",
+  revpar: "לילות מוזמנים (30 יום)",
+  open_invoices: "חשבוניות פתוחות",
+};
+
+const resStatusHe: Record<string, string> = { pending: "ממתין", confirmed: "מאושר", checkin: "צ׳ק-אין", checkout: "צ׳ק-אאוט", cancelled: "בוטל", block: "חסום" };
+const resStatusTone: Record<string, string> = { pending: "warning", confirmed: "info", checkin: "success", checkout: "neutral", cancelled: "danger", block: "neutral" };
+const chHe: Record<string, string> = { direct: "ישיר", airbnb: "Airbnb", booking: "Booking", vrbo: "Vrbo", tzimmerer: "צימרר", other: "אחר", block: "חסום" };
+const chTone: Record<string, string> = { direct: "gold", airbnb: "danger", booking: "info", vrbo: "warning", tzimmerer: "success", other: "neutral", block: "neutral" };
+const srcHe: Record<string, string> = { website: "אתר", whatsapp: "וואטסאפ", tzimmerer: "צימרר", instagram: "אינסטגרם", referral: "המלצה", bot: "בוט", other: "אחר" };
+const srcTone: Record<string, string> = { website: "info", whatsapp: "success", tzimmerer: "gold", instagram: "danger", referral: "warning", bot: "neutral", other: "neutral" };
+const stageHe: Record<string, string> = { new: "חדש", contacted: "נוצר קשר", quoted: "הצעה", booked: "הוזמן", lost: "אבוד" };
+const stageTone: Record<string, string> = { new: "info", contacted: "warning", quoted: "gold", booked: "success", lost: "danger" };
+const invStatusHe: Record<string, string> = { draft: "טיוטה", sent: "נשלח", paid: "שולם", overdue: "בפיגור", cancelled: "בוטל" };
+const invStatusTone: Record<string, string> = { draft: "neutral", sent: "info", paid: "success", overdue: "danger", cancelled: "neutral" };
+
+export const getDashboardDrill = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { key: DrillKey }) => z.object({ key: z.enum(drillKeys) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const key = data.key;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayStr = isoDay(today);
+    const monthStart = isoDay(new Date(today.getFullYear(), today.getMonth(), 1));
+    const monthEnd = isoDay(new Date(today.getFullYear(), today.getMonth() + 1, 1));
+    const weekAgo = isoDay(new Date(today.getTime() - 7 * 86400000));
+    const days30 = isoDay(new Date(today.getTime() - 30 * 86400000));
+
+    const rows: DrillRow[] = [];
+    const title = drillTitles[key];
+
+    const unitLabelMap = async () => {
+      const [{ data: units }, { data: props }] = await Promise.all([
+        context.supabase.from("units").select("id, name, property_id"),
+        context.supabase.from("properties").select("id, name"),
+      ]);
+      const pm = new Map((props ?? []).map((p) => [p.id, p.name]));
+      return new Map((units ?? []).map((u) => [u.id, `${pm.get(u.property_id) ?? ""} · ${u.name}`]));
+    };
+
+    // Reservations-based drills
+    if (["staying_now", "arrivals_today", "departures_today", "occupancy_month", "avg_stay", "cancel_rate", "adr", "revpar"].includes(key)) {
+      const uMap = await unitLabelMap();
+      let q = context.supabase.from("reservations").select("id, unit_id, guest_name, phone, channel, status, check_in, check_out, nights, total_amount");
+      if (key === "staying_now") q = q.lte("check_in", todayStr).gt("check_out", todayStr).neq("status", "cancelled");
+      else if (key === "arrivals_today") q = q.eq("check_in", todayStr).neq("status", "cancelled");
+      else if (key === "departures_today") q = q.eq("check_out", todayStr).neq("status", "cancelled");
+      else if (key === "occupancy_month") q = q.lt("check_in", monthEnd).gt("check_out", monthStart).neq("status", "cancelled").neq("channel", "block");
+      else if (key === "avg_stay" || key === "adr" || key === "revpar") q = q.gte("check_in", days30).neq("status", "cancelled").neq("channel", "block");
+      else if (key === "cancel_rate") q = q.gte("check_in", days30).eq("status", "cancelled");
+      const { data } = await q.order("check_in", { ascending: false }).limit(100);
+      for (const r of data ?? []) {
+        rows.push({
+          id: r.id,
+          primary: r.guest_name ?? "—",
+          secondary: `${uMap.get(r.unit_id) ?? ""} · ${r.check_in} → ${r.check_out} · ${r.nights ?? 0} לילות`,
+          pill: { label: chHe[r.channel] ?? r.channel, tone: chTone[r.channel] ?? "neutral" },
+          amount: r.total_amount ? `₪${Number(r.total_amount).toLocaleString()}` : null,
+          linkTo: "reservation",
+          linkId: r.id,
+        });
+      }
+    }
+
+    // Leads
+    else if (["new_leads_month", "open_leads", "conversion"].includes(key)) {
+      let q = context.supabase.from("leads").select("id, full_name, phone, source, stage, interest, created_at");
+      if (key === "new_leads_month") q = q.gte("created_at", monthStart);
+      else if (key === "open_leads") q = q.not("stage", "in", "(booked,lost)");
+      else if (key === "conversion") q = q.eq("stage", "booked");
+      const { data } = await q.order("created_at", { ascending: false }).limit(100);
+      for (const l of data ?? []) {
+        rows.push({
+          id: l.id,
+          primary: l.full_name,
+          secondary: `${l.interest ?? ""} ${l.phone ? `· ${l.phone}` : ""}`.trim() || null,
+          pill: { label: stageHe[l.stage] ?? l.stage, tone: stageTone[l.stage] ?? "neutral" },
+          amount: srcHe[l.source] ?? l.source,
+          linkTo: "lead",
+          linkId: l.id,
+        });
+      }
+    }
+
+    // Inquiries
+    else if (key === "inquiries_week" || key === "total_inquiries") {
+      const uMap = await unitLabelMap();
+      const { data: props } = await context.supabase.from("properties").select("id, name");
+      const pMap = new Map((props ?? []).map((p) => [p.id, p.name]));
+      let q = context.supabase.from("lead_inquiries").select("id, lead_id, source, property_id, unit_id, guest_name, check_in, check_out, created_at");
+      if (key === "inquiries_week") q = q.gte("created_at", weekAgo);
+      const { data } = await q.order("created_at", { ascending: false }).limit(100);
+      for (const i of data ?? []) {
+        const loc = i.unit_id ? uMap.get(i.unit_id) : i.property_id ? pMap.get(i.property_id) : null;
+        rows.push({
+          id: i.id,
+          primary: i.guest_name ?? "פנייה",
+          secondary: [loc, i.check_in && `${i.check_in} → ${i.check_out ?? "?"}`, new Date(i.created_at).toLocaleDateString("he-IL")].filter(Boolean).join(" · "),
+          pill: { label: srcHe[i.source] ?? i.source, tone: srcTone[i.source] ?? "neutral" },
+          amount: null,
+          linkTo: "lead",
+          linkId: i.lead_id,
+        });
+      }
+    }
+
+    // Invoices
+    else if (["revenue_month", "outstanding", "overdue", "open_invoices"].includes(key)) {
+      let q = context.supabase.from("invoices").select("id, invoice_number, customer_id, issue_date, due_date, total, status");
+      if (key === "revenue_month") q = q.eq("status", "paid").gte("issue_date", monthStart).lt("issue_date", monthEnd);
+      else if (key === "outstanding" || key === "open_invoices") q = q.in("status", ["sent", "overdue"]);
+      else if (key === "overdue") q = q.in("status", ["sent", "overdue"]).lt("due_date", todayStr);
+      const { data } = await q.order("issue_date", { ascending: false }).limit(100);
+      const { data: customers } = await context.supabase.from("customers").select("id, full_name");
+      const cMap = new Map((customers ?? []).map((c) => [c.id, c.full_name]));
+      for (const i of data ?? []) {
+        rows.push({
+          id: i.id,
+          primary: (i.customer_id ? cMap.get(i.customer_id) : null) ?? "—",
+          secondary: `${i.invoice_number} · ${i.due_date ? `לתשלום ${i.due_date}` : `הופק ${i.issue_date}`}`,
+          pill: { label: invStatusHe[i.status] ?? i.status, tone: invStatusTone[i.status] ?? "neutral" },
+          amount: `₪${Number(i.total).toLocaleString()}`,
+          linkTo: "invoice",
+          linkId: i.id,
+        });
+      }
+    }
+
+    return { title, count: rows.length, rows };
+  });

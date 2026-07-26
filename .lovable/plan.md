@@ -1,54 +1,54 @@
 ## Goal
-Replace the single dashboard with a tabbed view containing three focused dashboards, each fed by real data from Supabase. Keep interconnections consistent; top up seed data only where the current volume is too thin to make a chart meaningful.
+Every KPI tile on all three dashboard tabs (תפעול · לידים · פיננסי) becomes clickable. Clicking opens a right-side drawer (RTL slide-over) listing the actual records that make up the number, each row linking to the relevant detail page — Zoho CRM style.
 
-## Structure
-`src/routes/_authenticated/index.tsx` renders a page header + a tab strip (`תפעול` · `לידים ומכירות` · `פיננסי`), each tab a self-contained dashboard component. URL syncs via `?tab=ops|leads|finance` (default `ops`).
+## UX
 
-## Tab 1 — תפעול (Check-in cycle)
-Data: `reservations`, `units`, `properties`.
-- KPIs: staying now, arrivals today, departures today, occupancy this month, avg stay length, cancellation rate (last 30d).
-- 7-day arrivals/departures stacked bar (today ±3).
-- Today's arrivals list (guest, unit, phone, status pill) + departures list.
-- Upcoming week table: date, unit, guest, channel, status — clickable to reservation detail.
-- Unit status strip: each unit → currently occupied / free / arriving today, colored.
+- `KpiCard` gains an optional `onClick`. When present: card gets hover lift, cursor-pointer, and a subtle ↖ affordance chip in the corner (matching gold/navy tone).
+- A single reusable `KpiDrillDrawer` renders on the right (RTL "start"), 420px wide, with header (KPI label + count + close), scrollable body, and empty state ("אין רשומות").
+- Body rows are compact list items styled like the existing `ActivityListCard` — primary text, muted meta, tone pill on the end, whole row clickable → navigates and closes the drawer.
+- Abstract KPIs (occupancy %, ADR, RevPAR, conversion %, cancellation %) drill into the records that define the metric — see mapping below.
 
-## Tab 2 — לידים ומכירות (Leads)
-Data: `leads`, `lead_inquiries`, `reservations` (for booked conversions), `communications`.
-- KPIs: new leads this month, open leads (not booked/lost), conversion rate (booked / total closed), avg time-to-book, inquiries this week.
-- Funnel bar: new → contacted → quoted → booked / lost with counts.
-- Source breakdown pie (website, whatsapp, tzimmerer, instagram, referral, other) with % and counts.
-- Inquiries-per-property bar (from `lead_inquiries.property_id`).
-- Recent inquiries list (source pill, property, dates, guest name) — clickable to lead.
-- Top-of-funnel: 5 newest leads with stage pill + last-contact date.
+## KPI → drill mapping
 
-## Tab 3 — פיננסי (Financial)
-Data: `invoices`, `reservations`.
-- KPIs: revenue this month (paid invoices), outstanding balance (sent+overdue), overdue amount, ADR, RevPAR, paid-invoice count.
-- Revenue by month bar (last 6 months, current highlighted) — from paid invoices `issue_date`.
-- Paid vs outstanding donut (this month).
-- Revenue by channel bar (sum `reservations.total_amount` per channel this month).
-- Outstanding invoices table: number, customer, due date, days overdue, total, status pill — clickable to payment detail.
-- Top customers by revenue (last 90d), top 5.
+**Operations**
+- שוהים עכשיו → reservations where check_in ≤ today < check_out
+- הגעות היום → today's arrivals
+- עזיבות היום → today's departures
+- תפוסה חודש → occupied unit-nights this month (list reservations overlapping current month)
+- שהות ממוצעת → reservations from last 30d with nights
+- שיעור ביטולים → cancelled reservations last 30d
 
-## Seed top-up (only if needed to make charts meaningful)
-After counting current data:
-- If <8 paid invoices exist across last 6 months → add historical paid invoices tied to existing checkout reservations spanning 6 months so the revenue-by-month chart is non-trivial. New invoices reuse existing `customer_id` + `reservation_id`; no orphan rows.
-- If fewer than 6 leads have `stage='booked'` → mark a few existing leads booked and set their `booked_reservation_id` (if column exists) or match by phone to an existing reservation so funnel + conversion have real numbers.
-- No new customers, reservations, or units created — interconnection integrity preserved.
+**Leads**
+- לידים חדשים החודש → leads created this month
+- לידים פתוחים → leads not in booked/lost
+- שיעור המרה → booked leads (last 90d)
+- פניות השבוע → lead_inquiries created last 7d
+- סה״כ פניות → all lead_inquiries (recent 50)
+
+**Financial**
+- הכנסות החודש → paid invoices this month
+- יתרת גבייה → sent + overdue invoices
+- בפיגור → overdue invoices (due_date < today, not paid)
+- ADR → checkout reservations last 30d with nights + total
+- RevPAR → same set, contextualized
+- ח״ם פתוחות → same as יתרת גבייה, table shape
 
 ## Backend
-Add three server functions in `src/lib/data.functions.ts`:
-- `getOperationsDashboard()` — arrivals/departures ±3 days, unit status, KPIs.
-- `getLeadsDashboard()` — funnel counts, source mix, inquiries-per-property, recent inquiries, KPIs.
-- `getFinancialDashboard()` — monthly revenue series, paid/outstanding, channel revenue, overdue list, top customers, KPIs.
 
-Existing `getDashboardData` is removed after the new page is wired.
+Add one server fn: `getDashboardDrill({ key })` in `src/lib/data.functions.ts`, `.middleware([requireSupabaseAuth])`, input validated to a union of the ~17 keys above. Returns `{ title: string, rows: DrillRow[] }` where `DrillRow` is a discriminated union: `reservation | lead | inquiry | invoice | customer` — each carrying `id`, `primary`, `secondary`, optional `tone`+`pillLabel`, and a `link` descriptor `{ to, params }` the drawer feeds straight into `nav()`.
+
+Single server fn (not 17) keeps the surface small; internal `switch(key)` builds each query. Reuses existing Supabase reads — no new tables, no schema changes.
 
 ## Frontend
-- `src/routes/_authenticated/index.tsx` — tab shell reading `?tab`.
-- `src/components/dashboard/OperationsTab.tsx`, `LeadsTab.tsx`, `FinancialTab.tsx` — each uses `useSuspenseQuery` on its own server fn.
-- Reuse `KpiCard`, `ActivityListCard`, `RevenueChart`, `OccupancyChart`, `ChannelMixChart`, `TonePill`. Add a small `FunnelBar` and `MiniDonut` inline where needed.
-- Preserve RTL, existing navy/gold palette, and inline navigation to detail pages.
+
+Files touched:
+- `src/components/dashboard/KpiCard.tsx` — add optional `onClick`, hover/cursor when clickable, small "↖" gold affordance.
+- `src/components/dashboard/KpiDrillDrawer.tsx` (new) — RTL fixed drawer, backdrop, Escape/click-out close, `useServerFn(getDashboardDrill)` + `useQuery` keyed on drill key, renders rows via a tiny `<DrillRow>` that resolves `link` through `useNavigate()`.
+- `src/components/dashboard/OperationsTab.tsx`, `LeadsTab.tsx`, `FinancialTab.tsx` — local `const [drill, setDrill] = useState<Key|null>(null)`, pass `onClick={() => setDrill("arrivals_today")}` to each `KpiCard`, mount one `<KpiDrillDrawer drillKey={drill} onClose={() => setDrill(null)} />` per tab.
+- `src/lib/data.functions.ts` — add `getDashboardDrill` + `DrillRow` type export.
 
 ## Out of scope
-No schema changes, no new tables, no auth changes, no changes to other modules' pages.
+
+- No new tables, no schema/RLS changes.
+- Chart bars/segments stay non-clickable (KPIs only, per your answer).
+- No dashboard layout redesign — only KPI interaction and one shared drawer.

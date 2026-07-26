@@ -339,7 +339,7 @@ export const getLeadDetail = createServerFn({ method: "GET" })
       context.supabase.from("leads").select("*").eq("id", data.id).single(),
       context.supabase
         .from("lead_inquiries")
-        .select("id, source, unit_id, property_id, check_in, check_out, guests, message, created_at")
+        .select("id, source, unit_id, property_id, check_in, check_out, guests, nights, message, page_url, form_name, referrer, utm_source, utm_campaign, utm_medium, guest_name, phone, email, created_at")
         .eq("lead_id", data.id)
         .order("created_at", { ascending: false }),
       context.supabase
@@ -376,7 +376,7 @@ export const updateLead = createServerFn({ method: "POST" })
 
 export const addLeadInquiry = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { lead_id: string; source: string; unit_id?: string | null; property_id?: string | null; check_in?: string | null; check_out?: string | null; guests?: number | null; message?: string | null }) =>
+  .inputValidator((d: { lead_id: string; source: string; unit_id?: string | null; property_id?: string | null; check_in?: string | null; check_out?: string | null; guests?: number | null; message?: string | null; page_url?: string | null; form_name?: string | null; referrer?: string | null; utm_source?: string | null; utm_campaign?: string | null }) =>
     z.object({
       lead_id: z.string().uuid(),
       source: z.string().min(1),
@@ -386,6 +386,11 @@ export const addLeadInquiry = createServerFn({ method: "POST" })
       check_out: z.string().nullable().optional(),
       guests: z.number().int().positive().nullable().optional(),
       message: z.string().nullable().optional(),
+      page_url: z.string().nullable().optional(),
+      form_name: z.string().nullable().optional(),
+      referrer: z.string().nullable().optional(),
+      utm_source: z.string().nullable().optional(),
+      utm_campaign: z.string().nullable().optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {

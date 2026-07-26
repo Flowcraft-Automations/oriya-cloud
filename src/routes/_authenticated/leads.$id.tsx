@@ -16,6 +16,9 @@ export const Route = createFileRoute("/_authenticated/leads/$id")({
 
 type Tab = "profile" | "inquiries" | "marketing";
 
+const warmthLabel: Record<string, string> = { cold: "קר", warm: "פושר", hot: "חם" };
+const warmthTone: Record<string, "neutral" | "gold" | "danger"> = { cold: "neutral", warm: "gold", hot: "danger" };
+
 function LeadDetailPage() {
   const { id } = Route.useParams();
   const nav = useNavigate();
@@ -48,7 +51,10 @@ function LeadDetailPage() {
       title={lead.full_name}
       statusPill={{ label: stageLabel[lead.stage as LeadStage], tone: stageTone[lead.stage as LeadStage] ?? "neutral" }}
       onDelete={() => { if (confirm("למחוק ליד?")) delM.mutate(); }}
-      tags={<TonePill label={sourceLabel[lead.source as LeadSource]} tone={sourceTone[lead.source as LeadSource] ?? "neutral"} />}
+      tags={<>
+        <TonePill label={sourceLabel[lead.source as LeadSource]} tone={sourceTone[lead.source as LeadSource] ?? "neutral"} />
+        <TonePill label={`חמימות: ${warmthLabel[(lead as any).warmth ?? "cold"]}`} tone={warmthTone[(lead as any).warmth ?? "cold"]} />
+      </>}
       toolbar={<>
         {lead.phone && (
           <a href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
@@ -90,6 +96,14 @@ function LeadDetailPage() {
               onSave={(v) => updM.mutate({ stage: v as LeadStage })} />
             <EditableRow label="עניין" value={lead.interest} onSave={(v) => updM.mutate({ interest: v })} />
             <FieldRow label="נוצר" value={new Date(lead.created_at).toLocaleDateString("he-IL")} />
+          </SectionBar>
+          <SectionBar title="בוט WhatsApp" accent="var(--success-bg)" barColor="var(--success)">
+            <EditableRow label="חמימות" type="select" value={(lead as any).warmth ?? "cold"}
+              options={[{ value: "cold", label: "קר" }, { value: "warm", label: "פושר" }, { value: "hot", label: "חם" }]}
+              display={<TonePill label={warmthLabel[(lead as any).warmth ?? "cold"]} tone={warmthTone[(lead as any).warmth ?? "cold"]} />}
+              onSave={(v) => updM.mutate({ warmth: v })} />
+            <FieldRow label="שלב אחרון בבוט" value={(lead as any).bot_stage ?? "—"} />
+            <FieldRow label="פעילות אחרונה בבוט" value={(lead as any).last_bot_event_at ? new Date((lead as any).last_bot_event_at).toLocaleString("he-IL") : "—"} />
           </SectionBar>
           <SectionBar title="הערות" accent="var(--bg-subtle)" barColor="var(--border)">
             <EditableRow label="הערות" type="textarea" value={lead.notes} onSave={(v) => updM.mutate({ notes: v })} />
@@ -141,6 +155,17 @@ function LeadDetailPage() {
                   <li key={i.id as string} className="py-3">
                     <div className="flex flex-wrap items-center gap-2 text-sm">
                       <TonePill label={sourceLabel[src] ?? String(i.source)} tone={sourceTone[src] ?? "neutral"} />
+                      {i.bot_event && (
+                        <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium"
+                          style={{ borderColor: "var(--success)", color: "var(--success)", backgroundColor: "var(--success-bg)" }}>
+                          bot · {String(i.bot_event)}
+                        </span>
+                      )}
+                      {i.bot_stage && (
+                        <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                          {String(i.bot_stage)}
+                        </span>
+                      )}
                       {i.form_name && (
                         <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: "var(--navy-700)" }}>
                           <Globe size={12} /> {String(i.form_name)}

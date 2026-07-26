@@ -6,6 +6,7 @@ import {
   Users,
   Sparkles,
   Receipt,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +34,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { to: "/leads", label: "לידים ושיווק", icon: Sparkles },
       { to: "/customers", label: "לקוחות", icon: Users },
+      { to: "/marketing", label: "שיווק ותקשורת", icon: Megaphone },
     ],
   },
 ];

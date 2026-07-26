@@ -36,16 +36,16 @@ Deno.serve(async (req) => {
     (body.name ? String(body.name).trim() : "") ||
     "ליד וואטסאפ";
 
-  // Warmth: caller can send `warmth` directly, or we infer from bot_stage.
+  // Hardcoded demo mapping: 3 bot stages -> warmth.
   const stage = cf.bot_stage != null ? String(cf.bot_stage) : (body.bot_stage != null ? String(body.bot_stage) : null);
-  const explicit = (cf.warmth ?? body.warmth) as Warmth | undefined;
-  let warmth: Warmth = "cold";
-  if (explicit && rank[explicit] != null) warmth = explicit;
-  else if (stage) {
-    const s = stage.toLowerCase();
-    if (/(book|order|payment|handoff|hot|checkout|confirm)/.test(s)) warmth = "hot";
-    else if (/(apt|unit|date|guests|select|warm|interested)/.test(s)) warmth = "warm";
-  }
+  const stageMap: Record<string, Warmth> = { welcome: "cold", appartments: "warm", apartments: "warm", u360: "hot" };
+  const key = stage ? stage.toLowerCase().trim() : "";
+  let warmth: Warmth = stageMap[key] ?? "cold";
+
+  // Last free-text input from the user (ManyChat exposes it as `last_input_text`).
+  const lastText =
+    (body.last_input_text ?? cf.last_input_text ?? cf.last_user_input ?? null);
+  const lastTextStr = lastText != null ? String(lastText).trim() : null;
 
   const sb = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
@@ -71,10 +71,12 @@ Deno.serve(async (req) => {
     await sb.from("leads").update(patch).eq("id", leadId);
   }
 
-  // Log stage progression only (no payload dump).
-  if (stage) {
+  // Log stage progression + last text input.
+  if (stage || lastTextStr) {
     await sb.from("lead_inquiries").insert({
-      lead_id: leadId, source: "whatsapp", bot_stage: stage, bot_event: `warmth:${merged}`,
+      lead_id: leadId, source: "whatsapp",
+      bot_stage: stage, bot_event: `warmth:${merged}`,
+      message: lastTextStr,
     });
   }
 

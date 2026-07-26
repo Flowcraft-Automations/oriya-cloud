@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
@@ -6,7 +7,8 @@ import { Wallet, AlertCircle, Clock, TrendingUp, PieChart as PieIcon, Receipt } 
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { OCard, OCardBody, OCardHeader, OCardTitle } from "@/components/ui-oriya/Card";
 import { TonePill } from "@/components/detail/DetailLayout";
-import { getFinancialDashboard } from "@/lib/data.functions";
+import { getFinancialDashboard, type DrillKey } from "@/lib/data.functions";
+import { KpiDrillDrawer } from "@/components/dashboard/KpiDrillDrawer";
 import { channelLabel, channelTone, type Channel } from "@/lib/types";
 
 const statusLabel: Record<string, string> = { draft: "טיוטה", sent: "נשלח", paid: "שולם", overdue: "בפיגור", cancelled: "בוטל" };
@@ -18,16 +20,17 @@ export function FinancialTab() {
   const fn = useServerFn(getFinancialDashboard);
   const { data } = useSuspenseQuery({ queryKey: ["dash-fin"], queryFn: () => fn() });
   const nav = useNavigate();
+  const [drill, setDrill] = useState<DrillKey | null>(null);
 
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-        <KpiCard label="הכנסות החודש" value={`₪${data.kpis.monthRevenue.toLocaleString()}`} sub={`${data.kpis.paidCount} חשבוניות`} icon={Wallet} tone="gold" />
-        <KpiCard label="יתרת גבייה" value={`₪${data.kpis.outstandingSum.toLocaleString()}`} sub="פתוח" icon={Clock} tone="navy" />
-        <KpiCard label="בפיגור" value={`₪${data.kpis.overdueSum.toLocaleString()}`} sub="לתשלום מיידי" icon={AlertCircle} tone="gold" />
-        <KpiCard label="ADR" value={`₪${data.kpis.adr}`} sub="לילה ממוצע" icon={TrendingUp} tone="navy" />
-        <KpiCard label="RevPAR" value={`₪${data.kpis.revpar}`} sub="הכנסה ליחידה" icon={PieIcon} tone="navy" />
-        <KpiCard label="ח״ם פתוחות" value={data.outstandingList.length} sub="לגבייה" icon={Receipt} tone="navy" />
+        <KpiCard label="הכנסות החודש" value={`₪${data.kpis.monthRevenue.toLocaleString()}`} sub={`${data.kpis.paidCount} חשבוניות`} icon={Wallet} tone="gold" onClick={() => setDrill("revenue_month")} />
+        <KpiCard label="יתרת גבייה" value={`₪${data.kpis.outstandingSum.toLocaleString()}`} sub="פתוח" icon={Clock} tone="navy" onClick={() => setDrill("outstanding")} />
+        <KpiCard label="בפיגור" value={`₪${data.kpis.overdueSum.toLocaleString()}`} sub="לתשלום מיידי" icon={AlertCircle} tone="gold" onClick={() => setDrill("overdue")} />
+        <KpiCard label="ADR" value={`₪${data.kpis.adr}`} sub="לילה ממוצע" icon={TrendingUp} tone="navy" onClick={() => setDrill("adr")} />
+        <KpiCard label="RevPAR" value={`₪${data.kpis.revpar}`} sub="הכנסה ליחידה" icon={PieIcon} tone="navy" onClick={() => setDrill("revpar")} />
+        <KpiCard label="ח״ם פתוחות" value={data.outstandingList.length} sub="לגבייה" icon={Receipt} tone="navy" onClick={() => setDrill("open_invoices")} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -172,6 +175,7 @@ export function FinancialTab() {
           )}
         </OCardBody>
       </OCard>
+      <KpiDrillDrawer drillKey={drill} onClose={() => setDrill(null)} />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
@@ -6,23 +7,25 @@ import { Users, LogIn, LogOut, PieChart, Clock, XCircle } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { OCard, OCardBody, OCardHeader, OCardTitle } from "@/components/ui-oriya/Card";
 import { TonePill } from "@/components/detail/DetailLayout";
-import { getOperationsDashboard } from "@/lib/data.functions";
+import { getOperationsDashboard, type DrillKey } from "@/lib/data.functions";
+import { KpiDrillDrawer } from "@/components/dashboard/KpiDrillDrawer";
 import { channelLabel, channelTone, statusLabel, statusTone, type Channel, type ReservationStatus } from "@/lib/types";
 
 export function OperationsTab() {
   const fn = useServerFn(getOperationsDashboard);
   const { data } = useSuspenseQuery({ queryKey: ["dash-ops"], queryFn: () => fn() });
   const nav = useNavigate();
+  const [drill, setDrill] = useState<DrillKey | null>(null);
 
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-        <KpiCard label="שוהים עכשיו" value={data.kpis.stayingNow} sub="במלון" icon={Users} tone="navy" />
-        <KpiCard label="הגעות היום" value={data.kpis.arrivingToday} sub="Check-in" icon={LogIn} tone="gold" />
-        <KpiCard label="עזיבות היום" value={data.kpis.departingToday} sub="Check-out" icon={LogOut} tone="navy" />
-        <KpiCard label="תפוסה חודש" value={`${data.kpis.occupancyPct}%`} sub="לילות תפוסים" icon={PieChart} tone="navy" />
-        <KpiCard label="שהות ממוצעת" value={`${data.kpis.avgStay}`} sub="לילות · 30 יום" icon={Clock} tone="navy" />
-        <KpiCard label="שיעור ביטולים" value={`${data.kpis.cancelRate}%`} sub="30 יום אחרונים" icon={XCircle} tone="gold" />
+        <KpiCard label="שוהים עכשיו" value={data.kpis.stayingNow} sub="במלון" icon={Users} tone="navy" onClick={() => setDrill("staying_now")} />
+        <KpiCard label="הגעות היום" value={data.kpis.arrivingToday} sub="Check-in" icon={LogIn} tone="gold" onClick={() => setDrill("arrivals_today")} />
+        <KpiCard label="עזיבות היום" value={data.kpis.departingToday} sub="Check-out" icon={LogOut} tone="navy" onClick={() => setDrill("departures_today")} />
+        <KpiCard label="תפוסה חודש" value={`${data.kpis.occupancyPct}%`} sub="לילות תפוסים" icon={PieChart} tone="navy" onClick={() => setDrill("occupancy_month")} />
+        <KpiCard label="שהות ממוצעת" value={`${data.kpis.avgStay}`} sub="לילות · 30 יום" icon={Clock} tone="navy" onClick={() => setDrill("avg_stay")} />
+        <KpiCard label="שיעור ביטולים" value={`${data.kpis.cancelRate}%`} sub="30 יום אחרונים" icon={XCircle} tone="gold" onClick={() => setDrill("cancel_rate")} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -104,6 +107,7 @@ export function OperationsTab() {
           )}
         </OCardBody>
       </OCard>
+      <KpiDrillDrawer drillKey={drill} onClose={() => setDrill(null)} />
     </div>
   );
 }

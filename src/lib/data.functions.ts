@@ -769,3 +769,308 @@ export const listInvoicesByReservation = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
+
+// ---------- Tabbed Dashboards ----------
+
+const HE_MONTHS = ["ינו", "פבר", "מרץ", "אפר", "מאי", "יונ", "יול", "אוג", "ספט", "אוק", "נוב", "דצמ"];
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+
+export const getOperationsDashboard = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const rangeStart = new Date(today); rangeStart.setDate(today.getDate() - 3);
+    const rangeEnd = new Date(today); rangeEnd.setDate(today.getDate() + 7);
+    const days30 = new Date(today); days30.setDate(today.getDate() - 30);
+
+    const [{ data: units }, { data: properties }, { data: res30 }, { data: resWindow }] = await Promise.all([
+      context.supabase.from("units").select("id, name, property_id"),
+      context.supabase.from("properties").select("id, name"),
+      context.supabase
+        .from("reservations")
+        .select("id, status, check_in, check_out, nights, channel")
+        .gte("check_in", isoDay(days30)),
+      context.supabase
+        .from("reservations")
+        .select("id, unit_id, customer_id, guest_name, phone, channel, status, check_in, check_out, nights")
+        .lte("check_in", isoDay(rangeEnd))
+        .gte("check_out", isoDay(rangeStart)),
+    ]);
+
+    const unitMap = new Map((units ?? []).map((u) => [u.id, u]));
+    const propMap = new Map((properties ?? []).map((p) => [p.id, p.name]));
+    const unitLabel = (id: string) => {
+      const u = unitMap.get(id); if (!u) return "—";
+      return `${propMap.get(u.property_id) ?? ""} · ${u.name}`.trim();
+    };
+    const todayStr = isoDay(today);
+    const reservations = resWindow ?? [];
+    const active = reservations.filter((r) => r.status !== "cancelled" && r.channel !== "block");
+
+    const stayingNow = active.filter((r) => r.check_in <= todayStr && r.check_out > todayStr);
+    const arrivingToday = active.filter((r) => r.check_in === todayStr);
+    const departingToday = active.filter((r) => r.check_out === todayStr);
+
+    // Occupancy this month from window (roughly; window includes near-term)
+    let occ = 0;
+    for (const r of active) {
+      const ci = new Date(r.check_in), co = new Date(r.check_out);
+      const s = ci < monthStart ? monthStart : ci;
+      const e = co > monthEnd ? monthEnd : co;
+      occ += Math.max(0, Math.round((e.getTime() - s.getTime()) / 86400000));
+    }
+    const capacity = (units?.length ?? 0) * daysInMonth;
+    const occPct = capacity > 0 ? Math.round((occ / capacity) * 100) : 0;
+
+    // Avg stay + cancellation rate (last 30d)
+    const r30 = res30 ?? [];
+    const stays = r30.filter((r) => r.status !== "cancelled" && r.channel !== "block");
+    const avgStay = stays.length ? Math.round((stays.reduce((a, r) => a + (r.nights ?? 0), 0) / stays.length) * 10) / 10 : 0;
+    const cancelRate = r30.length ? Math.round((r30.filter((r) => r.status === "cancelled").length / r30.length) * 100) : 0;
+
+    // 7-day series (today ± 3)
+    const series: { date: string; label: string; arrivals: number; departures: number }[] = [];
+    for (let i = -3; i <= 3; i++) {
+      const d = new Date(today); d.setDate(today.getDate() + i);
+      const ds = isoDay(d);
+      series.push({
+        date: ds,
+        label: `${d.getDate()}/${d.getMonth() + 1}`,
+        arrivals: active.filter((r) => r.check_in === ds).length,
+        departures: active.filter((r) => r.check_out === ds).length,
+      });
+    }
+
+    const upcoming = active
+      .filter((r) => r.check_in > todayStr && r.check_in <= isoDay(rangeEnd))
+      .sort((a, b) => a.check_in.localeCompare(b.check_in))
+      .slice(0, 10)
+      .map((r) => ({
+        id: r.id, check_in: r.check_in, check_out: r.check_out, guest_name: r.guest_name,
+        phone: r.phone, channel: r.channel, status: r.status, unit_label: unitLabel(r.unit_id),
+      }));
+
+    const unitStatus = (units ?? []).map((u) => {
+      const occupied = active.find((r) => r.unit_id === u.id && r.check_in <= todayStr && r.check_out > todayStr);
+      const arriving = active.find((r) => r.unit_id === u.id && r.check_in === todayStr);
+      return {
+        id: u.id,
+        label: `${propMap.get(u.property_id) ?? ""} · ${u.name}`,
+        state: occupied ? "occupied" : arriving ? "arriving" : "free",
+        guest: occupied?.guest_name ?? arriving?.guest_name ?? null,
+        until: occupied?.check_out ?? null,
+      } as const;
+    });
+
+    return {
+      kpis: {
+        stayingNow: stayingNow.length,
+        arrivingToday: arrivingToday.length,
+        departingToday: departingToday.length,
+        occupancyPct: occPct,
+        avgStay,
+        cancelRate,
+      },
+      series,
+      arrivalsToday: arrivingToday.map((r) => ({
+        id: r.id, guest_name: r.guest_name, phone: r.phone, channel: r.channel, status: r.status, unit_label: unitLabel(r.unit_id),
+      })),
+      departuresToday: departingToday.map((r) => ({
+        id: r.id, guest_name: r.guest_name, phone: r.phone, channel: r.channel, status: r.status, unit_label: unitLabel(r.unit_id),
+      })),
+      upcoming,
+      unitStatus,
+    };
+  });
+
+export const getLeadsDashboard = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const weekStart = new Date(today); weekStart.setDate(today.getDate() - 7);
+
+    const [{ data: leads }, { data: inquiries }, { data: properties }] = await Promise.all([
+      context.supabase.from("leads").select("id, full_name, source, stage, interest, created_at"),
+      context.supabase.from("lead_inquiries").select("id, lead_id, source, property_id, unit_id, check_in, check_out, guests, guest_name, created_at").order("created_at", { ascending: false }),
+      context.supabase.from("properties").select("id, name"),
+    ]);
+
+    const L = leads ?? [];
+    const I = inquiries ?? [];
+    const propMap = new Map((properties ?? []).map((p) => [p.id, p.name]));
+
+    const newThisMonth = L.filter((l) => new Date(l.created_at) >= monthStart).length;
+    const open = L.filter((l) => !["booked", "lost"].includes(l.stage)).length;
+    const closed = L.filter((l) => ["booked", "lost"].includes(l.stage));
+    const booked = L.filter((l) => l.stage === "booked").length;
+    const conversionPct = closed.length ? Math.round((booked / closed.length) * 100) : 0;
+    const inquiriesThisWeek = I.filter((i) => new Date(i.created_at) >= weekStart).length;
+
+    const stages = ["new", "contacted", "quoted", "booked", "lost"] as const;
+    const funnel = stages.map((s) => ({ stage: s, count: L.filter((l) => l.stage === s).length }));
+
+    const sourceCounts: Record<string, number> = {};
+    for (const l of L) sourceCounts[l.source] = (sourceCounts[l.source] ?? 0) + 1;
+    const sourceMix = Object.entries(sourceCounts).map(([k, v]) => ({ source: k, count: v }));
+
+    const propCounts: Record<string, number> = {};
+    for (const i of I) if (i.property_id) propCounts[i.property_id] = (propCounts[i.property_id] ?? 0) + 1;
+    const inquiriesByProperty = Object.entries(propCounts)
+      .map(([id, count]) => ({ property_id: id, name: propMap.get(id) ?? "—", count }))
+      .sort((a, b) => b.count - a.count);
+
+    const recentInquiries = I.slice(0, 8).map((i) => ({
+      id: i.id,
+      lead_id: i.lead_id,
+      source: i.source,
+      guest_name: i.guest_name ?? null,
+      property_name: i.property_id ? propMap.get(i.property_id) ?? null : null,
+      check_in: i.check_in,
+      check_out: i.check_out,
+      created_at: i.created_at,
+    }));
+
+    const newest = [...L].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5).map((l) => ({
+      id: l.id, full_name: l.full_name, source: l.source, stage: l.stage, interest: l.interest, created_at: l.created_at,
+    }));
+
+    return {
+      kpis: { newThisMonth, open, conversionPct, inquiriesThisWeek, totalLeads: L.length, booked },
+      funnel,
+      sourceMix,
+      inquiriesByProperty,
+      recentInquiries,
+      newest,
+    };
+  });
+
+export const getFinancialDashboard = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayStr = isoDay(today);
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+    const days90 = new Date(today); days90.setDate(today.getDate() - 90);
+
+    const [{ data: invoices }, { data: customers }, { data: reservations }] = await Promise.all([
+      context.supabase
+        .from("invoices")
+        .select("id, invoice_number, customer_id, reservation_id, issue_date, due_date, total, amount, tax, status")
+        .gte("issue_date", isoDay(sixMonthsAgo)),
+      context.supabase.from("customers").select("id, full_name"),
+      context.supabase
+        .from("reservations")
+        .select("id, channel, status, check_in, check_out, total_amount, nights")
+        .gte("check_in", isoDay(sixMonthsAgo)),
+    ]);
+
+    const inv = invoices ?? [];
+    const custMap = new Map((customers ?? []).map((c) => [c.id, c.full_name]));
+    const res = reservations ?? [];
+
+    // KPIs
+    const paidThisMonth = inv.filter((i) => i.status === "paid" && i.issue_date >= isoDay(monthStart) && i.issue_date < isoDay(monthEnd));
+    const monthRevenue = paidThisMonth.reduce((a, i) => a + Number(i.total), 0);
+    const outstanding = inv.filter((i) => i.status === "sent" || i.status === "overdue");
+    const outstandingSum = outstanding.reduce((a, i) => a + Number(i.total), 0);
+    const overdueSum = inv
+      .filter((i) => (i.status === "sent" || i.status === "overdue") && i.due_date && i.due_date < todayStr)
+      .reduce((a, i) => a + Number(i.total), 0);
+
+    // ADR / RevPAR (this month, from reservations)
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const unitsQ = await context.supabase.from("units").select("id");
+    const unitCount = unitsQ.data?.length ?? 0;
+    let occNights = 0, mRes = 0;
+    for (const r of res) {
+      if (r.status === "cancelled" || r.channel === "block") continue;
+      const ci = new Date(r.check_in), co = new Date(r.check_out);
+      const s = ci < monthStart ? monthStart : ci;
+      const e = co > monthEnd ? monthEnd : co;
+      const ov = Math.max(0, Math.round((e.getTime() - s.getTime()) / 86400000));
+      occNights += ov;
+      if (ov > 0 && (r.nights ?? 0) > 0) mRes += (Number(r.total_amount) * ov) / (r.nights ?? 1);
+    }
+    const adr = occNights > 0 ? Math.round(mRes / occNights) : 0;
+    const revpar = unitCount > 0 ? Math.round(mRes / (unitCount * daysInMonth)) : 0;
+
+    // Revenue by month (last 6)
+    const revenueByMonth: { month: string; value: number; current?: boolean }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const m = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const mEnd = new Date(m.getFullYear(), m.getMonth() + 1, 1);
+      const value = inv
+        .filter((v) => v.status === "paid" && v.issue_date >= isoDay(m) && v.issue_date < isoDay(mEnd))
+        .reduce((a, v) => a + Number(v.total), 0);
+      revenueByMonth.push({ month: HE_MONTHS[m.getMonth()], value: Math.round(value), current: i === 0 ? true : undefined });
+    }
+
+    // Paid vs outstanding donut
+    const donut = [
+      { name: "שולם החודש", value: Math.round(monthRevenue), color: "var(--success)" },
+      { name: "יתרת גבייה", value: Math.round(outstandingSum), color: "var(--gold-600)" },
+      { name: "בפיגור", value: Math.round(overdueSum), color: "var(--danger)" },
+    ].filter((d) => d.value > 0);
+
+    // Revenue by channel (this month, from reservations)
+    const chSum: Record<string, number> = {};
+    for (const r of res) {
+      if (r.status === "cancelled" || r.channel === "block") continue;
+      const ci = new Date(r.check_in), co = new Date(r.check_out);
+      const s = ci < monthStart ? monthStart : ci;
+      const e = co > monthEnd ? monthEnd : co;
+      const ov = Math.max(0, Math.round((e.getTime() - s.getTime()) / 86400000));
+      if (ov > 0 && (r.nights ?? 0) > 0) chSum[r.channel] = (chSum[r.channel] ?? 0) + (Number(r.total_amount) * ov) / (r.nights ?? 1);
+    }
+    const revenueByChannel = Object.entries(chSum).map(([channel, v]) => ({ channel, value: Math.round(v) }));
+
+    // Outstanding invoices list
+    const outstandingList = outstanding
+      .sort((a, b) => (a.due_date ?? "").localeCompare(b.due_date ?? ""))
+      .slice(0, 10)
+      .map((i) => ({
+        id: i.id,
+        invoice_number: i.invoice_number,
+        customer_name: i.customer_id ? custMap.get(i.customer_id) ?? null : null,
+        due_date: i.due_date,
+        total: Number(i.total),
+        status: i.status,
+        days_overdue: i.due_date && i.due_date < todayStr ? Math.round((today.getTime() - new Date(i.due_date).getTime()) / 86400000) : 0,
+      }));
+
+    // Top customers by revenue last 90d
+    const custSum = new Map<string, number>();
+    for (const i of inv) {
+      if (i.status !== "paid") continue;
+      if (i.issue_date < isoDay(days90)) continue;
+      if (!i.customer_id) continue;
+      custSum.set(i.customer_id, (custSum.get(i.customer_id) ?? 0) + Number(i.total));
+    }
+    const topCustomers = [...custSum.entries()]
+      .map(([id, v]) => ({ id, name: custMap.get(id) ?? "—", total: Math.round(v) }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    return {
+      kpis: {
+        monthRevenue: Math.round(monthRevenue),
+        outstandingSum: Math.round(outstandingSum),
+        overdueSum: Math.round(overdueSum),
+        paidCount: paidThisMonth.length,
+        adr,
+        revpar,
+      },
+      revenueByMonth,
+      donut,
+      revenueByChannel,
+      outstandingList,
+      topCustomers,
+    };
+  });

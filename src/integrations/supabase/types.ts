@@ -191,40 +191,70 @@ export type Database = {
           check_in: string | null
           check_out: string | null
           created_at: string
+          email: string | null
+          form_name: string | null
+          guest_name: string | null
           guests: number | null
           id: string
           lead_id: string
           message: string | null
+          nights: number | null
           owner_id: string
+          page_url: string | null
+          phone: string | null
           property_id: string | null
+          referrer: string | null
           source: string
           unit_id: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
         }
         Insert: {
           check_in?: string | null
           check_out?: string | null
           created_at?: string
+          email?: string | null
+          form_name?: string | null
+          guest_name?: string | null
           guests?: number | null
           id?: string
           lead_id: string
           message?: string | null
+          nights?: number | null
           owner_id: string
+          page_url?: string | null
+          phone?: string | null
           property_id?: string | null
+          referrer?: string | null
           source: string
           unit_id?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
         }
         Update: {
           check_in?: string | null
           check_out?: string | null
           created_at?: string
+          email?: string | null
+          form_name?: string | null
+          guest_name?: string | null
           guests?: number | null
           id?: string
           lead_id?: string
           message?: string | null
+          nights?: number | null
           owner_id?: string
+          page_url?: string | null
+          phone?: string | null
           property_id?: string | null
+          referrer?: string | null
           source?: string
           unit_id?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
         }
         Relationships: [
           {

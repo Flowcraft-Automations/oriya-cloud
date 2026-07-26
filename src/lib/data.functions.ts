@@ -354,7 +354,7 @@ export const getLeadDetail = createServerFn({ method: "GET" })
 
 export const updateLead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string; full_name?: string; phone?: string; email?: string; stage?: string; source?: string; interest?: string; notes?: string; property_id?: string | null }) =>
+  .inputValidator((d: { id: string; full_name?: string; phone?: string; email?: string; stage?: string; source?: string; interest?: string; notes?: string; property_id?: string | null; warmth?: string }) =>
     z.object({
       id: z.string().uuid(),
       full_name: z.string().min(1).optional(),
@@ -365,6 +365,7 @@ export const updateLead = createServerFn({ method: "POST" })
       interest: z.string().nullable().optional(),
       notes: z.string().nullable().optional(),
       property_id: z.string().uuid().nullable().optional(),
+      warmth: z.enum(["cold", "warm", "hot"]).optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {

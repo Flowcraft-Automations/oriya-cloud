@@ -95,8 +95,11 @@ function PropertiesPage() {
                   <div key={u.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm" style={{ borderColor: "var(--border)" }}>
                     <div>
                       <div className="font-medium" style={{ color: "var(--text-primary)" }}>{u.name}</div>
-                      <div className="ltr-num text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                        {u.capacity} אורחים · ₪{Number(u.base_price).toLocaleString()} / לילה
+                      <div dir="rtl" className="flex flex-wrap items-center gap-3 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                        <span>{u.capacity} אורחים</span>
+                        <span aria-hidden style={{ color: "var(--border)" }}>·</span>
+                        <span dir="ltr" className="ltr-num">₪{Number(u.base_price).toLocaleString()}</span>
+                        <span>/ לילה</span>
                       </div>
                     </div>
                     <button onClick={() => { if (confirm("למחוק יחידה?")) delUnit.mutate(u.id); }}>
@@ -144,7 +147,7 @@ function AddUnitForm({ propertyId, onAdd, pending }: { propertyId: string; onAdd
       </label>
       <label className="grid gap-1 text-[11px]" style={{ color: "var(--text-secondary)" }}>
         מחיר בסיס ללילה (₪)
-        <input type="number" min={0} placeholder="500" className="ltr-num rounded-md border px-2 py-1 text-xs" dir="ltr" style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
+        <input type="number" min={0} placeholder="0" className="ltr-num rounded-md border px-2 py-1 text-xs" dir="ltr" style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
           value={price} onChange={(e) => setPrice(e.target.value)} />
       </label>
       <button disabled={pending} type="submit" className="rounded-md px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-60"

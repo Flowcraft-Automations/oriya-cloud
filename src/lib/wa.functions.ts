@@ -395,3 +395,21 @@ export const getCustomerConsent = createServerFn({ method: "GET" })
       .from("contact_consent").select("opted_in, reason, updated_at").eq("customer_id", data.customer_id).maybeSingle();
     return row ?? { opted_in: true, reason: null, updated_at: null };
   });
+
+// ---------- Send by phone (used for leads without a customer row) ----------
+
+export const sendTemplateByPhone = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { phone: string; template_name: string; vars?: Record<string, string> }) =>
+    z.object({
+      phone: z.string().min(6),
+      template_name: z.string().min(1),
+      vars: z.record(z.string(), z.string()).optional(),
+    }).parse(d))
+  .handler(async ({ data, context }) => {
+    return insertMessageWithGuards(context.supabase, {
+      phone: data.phone,
+      template_name: data.template_name,
+      vars: data.vars,
+    });
+  });

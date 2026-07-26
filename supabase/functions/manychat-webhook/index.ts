@@ -73,10 +73,17 @@ Deno.serve(async (req) => {
     existing = data ?? null;
   }
   if (!existing) {
+    // Phones in the DB can contain dashes/spaces/prefixes. LIKE on the raw string
+    // misses them, so pull recent leads with a phone and match on digits in JS.
     const { data: candidates } = await sb.from("leads")
-      .select("id, phone, warmth, full_name, manychat_subscriber_id")
-      .ilike("phone", `%${tail}%`);
-    existing = (candidates ?? []).find((c: any) => String(c.phone ?? "").replace(/\D/g, "").endsWith(tail)) ?? null;
+      .select("id, phone, warmth, full_name, manychat_subscriber_id, created_at")
+      .not("phone", "is", null)
+      .order("created_at", { ascending: true })
+      .limit(1000);
+    existing = (candidates ?? []).find((c: any) => {
+      const d = String(c.phone ?? "").replace(/\D/g, "");
+      return d.length >= 8 && (d.endsWith(tail) || tail.endsWith(d.slice(-9)));
+    }) ?? null;
   }
 
   const merged: Warmth = existing

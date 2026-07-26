@@ -4,7 +4,7 @@ import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-q
 import { useServerFn } from "@tanstack/react-start";
 import { User, BookMarked } from "lucide-react";
 import { getInvoice, updateInvoice, deleteInvoice } from "@/lib/data.functions";
-import { DetailLayout, SectionBar, FieldRow } from "@/components/detail/DetailLayout";
+import { DetailLayout, SectionBar, FieldRow, EditableRow, TonePill } from "@/components/detail/DetailLayout";
 import { channelLabel, statusLabel as resStatusLabel, type Channel, type ReservationStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/payments/$id")({
@@ -55,51 +55,31 @@ function PaymentDetailPage() {
       {tab === "details" && (
         <div className="divide-y" style={{ borderColor: "var(--border)" }}>
           <SectionBar title="פרטי חשבונית" accent="var(--gold-100)" barColor="var(--gold-500)">
-            <div className="flex items-center justify-between gap-6 px-5 py-3">
-              <input defaultValue={invoice.invoice_number}
-                onBlur={(e) => e.target.value !== invoice.invoice_number && updM.mutate({ invoice_number: e.target.value })}
-                className="ltr-num w-64 rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }} />
-              <div className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>מספר</div>
-            </div>
-            <FieldRow label="תאריך הפקה" value={invoice.issue_date} ltr />
-            <div className="flex items-center justify-between gap-6 px-5 py-3">
-              <input type="date" defaultValue={invoice.due_date ?? ""}
-                onBlur={(e) => e.target.value !== (invoice.due_date ?? "") && updM.mutate({ due_date: e.target.value || null })}
-                className="ltr-num w-48 rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }} />
-              <div className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>לתשלום עד</div>
-            </div>
-            <div className="flex items-center justify-between gap-6 px-5 py-3">
-              <select value={invoice.status} onChange={(e) => updM.mutate({ status: e.target.value })}
-                className="rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }}>
-                {Object.entries(invStatusLabel).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-              <div className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>סטטוס</div>
-            </div>
+            <EditableRow label="מספר" ltr value={invoice.invoice_number}
+              onSave={(v) => v && updM.mutate({ invoice_number: v })} />
+            <EditableRow label="תאריך הפקה" type="date" ltr value={invoice.issue_date}
+              onSave={(v) => v && updM.mutate({ issue_date: v })} />
+            <EditableRow label="לתשלום עד" type="date" ltr value={invoice.due_date}
+              onSave={(v) => updM.mutate({ due_date: v || null })} />
+            <EditableRow label="סטטוס" type="select" value={invoice.status}
+              options={Object.entries(invStatusLabel).map(([k, v]) => ({ value: k, label: v }))}
+              display={<TonePill label={invStatusLabel[invoice.status] ?? invoice.status} tone={tone} />}
+              onSave={(v) => v && updM.mutate({ status: v })} />
           </SectionBar>
 
           <SectionBar title="סכומים" accent="#F2E9DA" barColor="var(--gold-600)">
-            <div className="flex items-center justify-between gap-6 px-5 py-3">
-              <input type="number" defaultValue={invoice.amount}
-                onBlur={(e) => {
-                  const v = Number(e.target.value);
-                  if (v !== Number(invoice.amount)) {
-                    const tax = Math.round(v * 0.17 * 100) / 100;
-                    updM.mutate({ amount: v, tax, total: Math.round((v + tax) * 100) / 100 });
-                  }
-                }}
-                className="ltr-num w-40 rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }} />
-              <div className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>סכום לפני מע״מ</div>
-            </div>
+            <EditableRow label="סכום לפני מע״מ" type="number" ltr value={invoice.amount}
+              onSave={(v) => {
+                const amt = Number(v ?? 0);
+                const tax = Math.round(amt * 0.17 * 100) / 100;
+                updM.mutate({ amount: amt, tax, total: Math.round((amt + tax) * 100) / 100 });
+              }} />
             <FieldRow label="מע״מ (17%)" value={`₪${Number(invoice.tax).toLocaleString()}`} ltr />
             <FieldRow label="סה״כ" value={<span className="text-lg font-bold">₪{Number(invoice.total).toLocaleString()}</span>} ltr />
           </SectionBar>
 
           <SectionBar title="הערות" accent="var(--bg-subtle)" barColor="var(--border)">
-            <div className="p-4">
-              <textarea rows={3} defaultValue={invoice.notes ?? ""}
-                onBlur={(e) => e.target.value !== (invoice.notes ?? "") && updM.mutate({ notes: e.target.value })}
-                className="w-full rounded-md border p-2 text-sm" style={{ borderColor: "var(--border)" }} />
-            </div>
+            <EditableRow label="הערות" type="textarea" value={invoice.notes} onSave={(v) => updM.mutate({ notes: v })} />
           </SectionBar>
         </div>
       )}

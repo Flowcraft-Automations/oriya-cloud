@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Trash2, CheckCircle2 } from "lucide-react";
 
 export type DetailTab = { key: string; label: string; count?: number };
@@ -162,6 +162,75 @@ export function FieldRow({ label, value, ltr }: { label: string; value: ReactNod
         dir={ltr ? "ltr" : undefined}
         style={{ color: hasValue ? "var(--text-primary)" : "var(--text-secondary)" }}>
         {hasValue ? value : "—"}
+      </div>
+      <div className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+type EditableType = "text" | "number" | "date" | "email" | "tel" | "textarea" | "select";
+export function EditableRow({
+  label, value, type = "text", ltr, options, placeholder, onSave, display,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+  type?: EditableType;
+  ltr?: boolean;
+  options?: { value: string; label: string }[];
+  placeholder?: string;
+  onSave: (v: string | number | null) => void;
+  display?: ReactNode; // optional custom read display (e.g. TonePill for select)
+}) {
+  const initial = value == null ? "" : String(value);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(initial);
+  useEffect(() => { setDraft(initial); }, [initial]);
+
+  const commit = () => {
+    setEditing(false);
+    if (draft === initial) return;
+    if (type === "number") onSave(draft === "" ? null : Number(draft));
+    else onSave(draft === "" ? null : draft);
+  };
+
+  const inputClass = "w-full rounded-md border bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--info)]";
+  const inputStyle = { borderColor: "var(--border)" } as const;
+
+  const editor =
+    type === "textarea" ? (
+      <textarea autoFocus rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commit}
+        placeholder={placeholder} className={inputClass} style={inputStyle} />
+    ) : type === "select" ? (
+      <select autoFocus value={draft} onChange={(e) => { setDraft(e.target.value); }}
+        onBlur={commit} className={inputClass} style={inputStyle}>
+        {options?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    ) : (
+      <input autoFocus type={type} value={draft} placeholder={placeholder}
+        onChange={(e) => setDraft(e.target.value)} onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setDraft(initial); setEditing(false); } }}
+        dir={ltr ? "ltr" : undefined}
+        className={inputClass + (ltr ? " ltr-num" : "")} style={inputStyle} />
+    );
+
+  const hasValue = value != null && value !== "";
+  return (
+    <div className="group flex items-center justify-between gap-6 px-5 py-3">
+      <div className="min-w-0 flex-1">
+        {editing ? (
+          <div className="max-w-md">{editor}</div>
+        ) : (
+          <button
+            onClick={() => setEditing(true)}
+            className={"w-full max-w-md rounded-md border border-transparent px-2 py-1 text-start text-sm transition-colors hover:border-[var(--border)] hover:bg-[var(--bg-subtle)] " + (ltr ? "ltr-num" : "")}
+            dir={ltr ? "ltr" : undefined}
+            style={{ color: hasValue ? "var(--text-primary)" : "var(--text-secondary)" }}
+            title="לחץ לעריכה">
+            {display ?? (hasValue ? String(value) : placeholder ?? "—")}
+          </button>
+        )}
       </div>
       <div className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
         {label}

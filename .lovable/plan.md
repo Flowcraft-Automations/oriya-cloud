@@ -1,75 +1,78 @@
-## Goal
-When a contact progresses through the ManyChat leads bot, ManyChat posts to a Supabase webhook. The webhook upserts a lead by phone (source = `bot`), records the current bot stage as a `lead_inquiries` row, and updates two new fields on `leads`: `bot_stage` (last node reached) and `warmth` (חמימות: cold/warm/hot).
+## Situation
 
-## 1. DB migration
-Add to `public.leads`:
-- `bot_stage text` — last ManyChat node id / label (e.g. `msg_1`, `choose_apt_U360`, `dates_captured`).
-- `warmth text` — enum-like: `cold | warm | hot` (default `cold`).
-- `last_bot_event_at timestamptz`.
-
-Add to `public.lead_inquiries`:
-- `bot_stage text`, `bot_event text` (e.g. `apt_selected`, `dates_selected`, `guests_selected`, `handoff`), `payload jsonb` (raw ManyChat custom fields for that step).
-
-No table rename; keep existing RLS + owner_id defaults.
-
-## 2. Webhook endpoint
-Reuse the existing `supabase/functions/manychat-webhook` (already public, `verify_jwt=false`). Extend it to accept a new event family:
+Two POSTs from ManyChat did reach the webhook (2026-07-26 16:31:09 and 16:31:50), but our current `manychat-webhook` handler only logs two fields:
 
 ```
-POST /functions/v1/manychat-webhook
-Header: x-manychat-signature: <MANYCHAT_WEBHOOK_SECRET>
-Body:
+[manychat-webhook] event: undefined phone: null
+```
+
+That means ManyChat's payload uses different field names than we assumed (`event` / `phone` at the top level). The raw body wasn't captured, so I genuinely cannot see what fields ManyChat sent — the log line above is all that exists.
+
+To map ManyChat → our `leads` / `lead_inquiries` schema correctly, I need to see one real payload first.
+
+## Plan
+
+### Step 1 — Capture the real payload (one deploy)
+
+Update `supabase/functions/manychat-webhook/index.ts` so it:
+
+- Reads the raw body as text, then parses JSON.
+- Logs the full body: `console.log('[manychat-webhook] RAW', rawText)`.
+- Logs top-level keys and a shallow dump of any `data` / `subscriber` / `contact` / `custom_fields` objects.
+- Still returns `200 { ok: true }` so ManyChat marks the step successful.
+- Does NOT yet write to the DB — pure inspection pass, so a wrong-shape payload can't create bad rows.
+
+### Step 2 — You fire one test from ManyChat
+
+Trigger the External Request node once from any test contact so a fresh payload lands in the logs.
+
+### Step 3 — Read the logs and design the mapping
+
+I pull the raw JSON from `edge_function_logs`, then in this same turn write the actual field mapping. Expected shape from ManyChat's External Request is roughly:
+
+```text
 {
-  "event": "lead_stage",
-  "phone": "+9725...",
-  "full_name": "…",           // optional
-  "stage": "msg_7_apt_U360",   // ManyChat node
-  "bot_event": "apt_selected", // semantic label from the flow
-  "warmth": "warm",            // optional override; else derived
-  "fields": {                  // any ManyChat custom fields to store
-    "apt": "U360", "check_in": "2026-08-10", "check_out": "2026-08-12",
-    "guests": 2, "audience": "couple"
-  }
+  "subscriber": { "id", "first_name", "last_name", "phone", "whatsapp_phone", ... },
+  "custom_fields": { <your bot fields: apt, check_in, check_out, guests, audience, stage, ...> },
+  "tags": [...],
+  "data": { ... }   // if you added a custom "data" JSON in the request body
 }
 ```
 
-Handler logic:
-1. Verify shared secret.
-2. Normalize phone (strip non-digits, keep leading `+`).
-3. Upsert `leads` by `phone`:
-   - If new → insert `{ full_name: fields.name ?? "ליד וואטסאפ", phone, source: 'bot', stage: 'new', bot_stage, warmth, last_bot_event_at: now() }`.
-   - If existing → update `bot_stage`, `warmth` (only if higher than current — see rule below), `last_bot_event_at`, and bump `stage` from `new`→`contacted` on first bot reply.
-4. Insert one `lead_inquiries` row for every event (source `bot`, includes `bot_stage`, `bot_event`, mapped `unit_id` if `fields.apt` matches a unit name, `check_in/out`, `guests`, `message`, `payload`).
-5. Warmth derivation (server-side, if not provided):
-   - `cold` = only entered flow.
-   - `warm` = selected an apartment OR audience.
-   - `hot` = provided dates + guests, or clicked "לאתר" / requested handoff.
-   Never downgrade — take `max(existing, new)`.
-6. Optional: on `bot_event = 'handoff'` set `leads.stage = 'contacted'` and log a `messages_log` note.
+Whatever it actually is, I'll map:
 
-Response: `{ ok: true, lead_id, warmth, bot_stage }` so ManyChat can store `lead_id` as a custom field for later events.
+| Our column | Likely ManyChat source |
+|---|---|
+| `leads.phone` | `subscriber.whatsapp_phone` or `subscriber.phone` |
+| `leads.full_name` | `subscriber.first_name` + `subscriber.last_name` |
+| `leads.source` | constant `whatsapp` |
+| `leads.bot_stage` | `custom_fields.stage` (or the ManyChat block name you send) |
+| `leads.warmth` | derived from which fields are present (apt → warm, dates+guests → hot) |
+| `lead_inquiries.unit_id` | lookup by `custom_fields.apt` (e.g. `U360`) |
+| `lead_inquiries.check_in/out/guests` | matching `custom_fields.*` |
+| `lead_inquiries.payload` | full raw body |
 
-## 3. Lead detail UI (small additions)
-- Header: show a warmth chip (cold=neutral, warm=gold, hot=danger tone) next to the existing stage pill.
-- Profile section: add `bot_stage` and `last_bot_event_at` as read-only rows (inline-edit disabled for these two).
-- Inquiries tab: existing timeline already renders `source=bot` — surface `bot_event` and `bot_stage` as small labels above the message.
+### Step 4 — Rewrite the handler with the confirmed mapping
 
-No changes to marketing/journeys.
+Replace the inspection handler with the real one:
 
-## 4. ManyChat side (config the user does, not code)
-- Add an "External Request" action after each Send Message node with:
-  - URL: `https://lymympugpgukoaowczov.supabase.co/functions/v1/manychat-webhook`
-  - Header `x-manychat-signature: {{MANYCHAT_WEBHOOK_SECRET}}`
-  - Body: JSON template with `event: "lead_stage"`, current node id as `stage`, semantic `bot_event`, and any captured custom fields.
-- On first message: also send `full_name` if collected.
+- Upsert lead by phone (normalized to digits).
+- Insert a `lead_inquiries` row per event.
+- Update `bot_stage`, `last_bot_event_at`, and bump `warmth` (never downgrade) using the derivation rules from the previous turn.
+- Return `{ ok, lead_id, warmth, bot_stage }` so ManyChat can save `lead_id` back as a custom field.
+- Keep signature verification (`x-manychat-signature`) only if `MANYCHAT_WEBHOOK_SECRET` is set.
 
-## 5. Secret
-Confirm `MANYCHAT_WEBHOOK_SECRET` is set in Supabase Edge Function secrets (used both for signature check and by ManyChat).
+### Step 5 — Verify
 
-## Out of scope
-- Real HMAC signature (still shared-secret compare, matching current stub).
-- Journey enrollment / auto-sending from the bot events (can layer later on top of `warmth` transitions).
-- Email/Zoho.
+- Ask you to fire the flow again from ManyChat.
+- Read `edge_function_logs` for a success line.
+- Query `leads` + `lead_inquiries` for the test phone via `supabase--read_query` and confirm the row shape.
+- Confirm the lead appears in `/leads` with the correct warmth chip and bot stage.
 
-## Open question
-Warmth ladder — is `cold → warm → hot` the right 3 levels, or do you want a 4th (`very hot` = asked for price/booking link)? Default: 3 levels as above unless you say otherwise.
+## Why two deploys instead of one
+
+I could guess the field names now, but every real integration I've seen where ManyChat is on the other side uses a different External Request body per project (you control what JSON gets posted from ManyChat's UI). Guessing risks silently writing wrong data into `leads` for every test you run. One 30-second inspection deploy removes that risk entirely.
+
+## No DB changes
+
+`leads.bot_stage`, `leads.warmth`, `leads.last_bot_event_at`, and `lead_inquiries.bot_stage / bot_event / payload` already exist from the previous turn. No migration needed.

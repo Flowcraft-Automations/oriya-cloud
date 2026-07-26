@@ -62,9 +62,16 @@ Deno.serve(async (req) => {
       (body?.subscriber?.id != null ? String(body.subscriber.id) :
         (cf?.subscriber_id != null ? String(cf.subscriber_id) : null)));
 
-  const { data: existing } = await sb.from("leads")
-    .select("id, warmth, full_name, manychat_subscriber_id")
-    .eq("phone", phone).maybeSingle();
+  // Match by digits-only phone so "050-444-2233", "+972504442233" and "0504442233"
+  // all resolve to the same existing lead instead of creating duplicates.
+  const tail = phone.slice(-9); // last 9 digits (Israeli mobile without leading 0)
+  const { data: candidates } = await sb.from("leads")
+    .select("id, phone, warmth, full_name, manychat_subscriber_id")
+    .or(`phone.ilike.%${tail}%,manychat_subscriber_id.eq.${manychat_subscriber_id ?? "___none___"}`);
+  const existing = (candidates ?? []).find((c: any) => {
+    const d = String(c.phone ?? "").replace(/\D/g, "");
+    return d.endsWith(tail) || (manychat_subscriber_id && c.manychat_subscriber_id === manychat_subscriber_id);
+  }) ?? null;
 
   const merged: Warmth = existing
     ? (rank[warmth] > rank[(existing.warmth as Warmth) ?? "cold"] ? warmth : ((existing.warmth as Warmth) ?? "cold"))

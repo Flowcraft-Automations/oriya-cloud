@@ -289,6 +289,203 @@ export const deleteLead = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Detail fetchers & updates ----------
+
+export const getCustomerDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const [{ data: customer }, { data: reservations }, { data: communications }] = await Promise.all([
+      context.supabase.from("customers").select("*").eq("id", data.id).single(),
+      context.supabase
+        .from("reservations")
+        .select("id, unit_id, guest_name, channel, status, check_in, check_out, nights, total_amount, paid_amount, rating, review")
+        .eq("customer_id", data.id)
+        .order("check_in", { ascending: false }),
+      context.supabase
+        .from("communications")
+        .select("id, channel, direction, subject, body, status, sent_at, campaign_id")
+        .eq("customer_id", data.id)
+        .order("sent_at", { ascending: false }),
+    ]);
+    if (!customer) throw new Error("Customer not found");
+    return { customer, reservations: reservations ?? [], communications: communications ?? [] };
+  });
+
+export const updateCustomer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; full_name?: string; phone?: string; email?: string; notes?: string; tags?: string[] }) =>
+    z.object({
+      id: z.string().uuid(),
+      full_name: z.string().min(1).optional(),
+      phone: z.string().nullable().optional(),
+      email: z.string().nullable().optional(),
+      notes: z.string().nullable().optional(),
+      tags: z.array(z.string()).optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { id, ...patch } = data;
+    const { error } = await context.supabase.from("customers").update(patch).eq("id", id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getLeadDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const [{ data: lead }, { data: inquiries }, { data: communications }] = await Promise.all([
+      context.supabase.from("leads").select("*").eq("id", data.id).single(),
+      context.supabase
+        .from("lead_inquiries")
+        .select("id, source, unit_id, property_id, check_in, check_out, guests, message, created_at")
+        .eq("lead_id", data.id)
+        .order("created_at", { ascending: false }),
+      context.supabase
+        .from("communications")
+        .select("id, channel, direction, subject, body, status, sent_at, campaign_id")
+        .eq("lead_id", data.id)
+        .order("sent_at", { ascending: false }),
+    ]);
+    if (!lead) throw new Error("Lead not found");
+    return { lead, inquiries: inquiries ?? [], communications: communications ?? [] };
+  });
+
+export const updateLead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; full_name?: string; phone?: string; email?: string; stage?: string; source?: string; interest?: string; notes?: string; property_id?: string | null }) =>
+    z.object({
+      id: z.string().uuid(),
+      full_name: z.string().min(1).optional(),
+      phone: z.string().nullable().optional(),
+      email: z.string().nullable().optional(),
+      stage: z.enum(["new", "contacted", "quoted", "booked", "lost"]).optional(),
+      source: z.enum(["whatsapp", "website", "tzimmerer", "instagram", "referral", "other"]).optional(),
+      interest: z.string().nullable().optional(),
+      notes: z.string().nullable().optional(),
+      property_id: z.string().uuid().nullable().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { id, ...patch } = data;
+    const { error } = await context.supabase.from("leads").update(patch).eq("id", id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const addLeadInquiry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { lead_id: string; source: string; unit_id?: string | null; property_id?: string | null; check_in?: string | null; check_out?: string | null; guests?: number | null; message?: string | null }) =>
+    z.object({
+      lead_id: z.string().uuid(),
+      source: z.string().min(1),
+      unit_id: z.string().uuid().nullable().optional(),
+      property_id: z.string().uuid().nullable().optional(),
+      check_in: z.string().nullable().optional(),
+      check_out: z.string().nullable().optional(),
+      guests: z.number().int().positive().nullable().optional(),
+      message: z.string().nullable().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("lead_inquiries").insert({ ...data, owner_id: context.userId });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getReservationDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: reservation } = await context.supabase
+      .from("reservations")
+      .select("*")
+      .eq("id", data.id)
+      .single();
+    if (!reservation) throw new Error("Reservation not found");
+    const [{ data: unit }, { data: customer }, { data: communications }] = await Promise.all([
+      context.supabase.from("units").select("id, name, property_id, capacity, base_price").eq("id", reservation.unit_id).single(),
+      reservation.customer_id
+        ? context.supabase.from("customers").select("id, full_name, phone, email").eq("id", reservation.customer_id).single()
+        : Promise.resolve({ data: null }),
+      reservation.customer_id
+        ? context.supabase
+            .from("communications")
+            .select("id, channel, direction, subject, body, sent_at, status")
+            .eq("customer_id", reservation.customer_id)
+            .order("sent_at", { ascending: false })
+            .limit(20)
+        : Promise.resolve({ data: [] as { id: string; channel: string; direction: string; subject: string | null; body: string | null; sent_at: string; status: string | null }[] }),
+    ]);
+    let property: { id: string; name: string } | null = null;
+    if (unit) {
+      const { data: p } = await context.supabase.from("properties").select("id, name").eq("id", unit.property_id).single();
+      property = p;
+    }
+    return { reservation, unit, property, customer, communications: communications ?? [] };
+  });
+
+export const updateReservation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    id: string;
+    guest_name?: string;
+    phone?: string | null;
+    check_in?: string;
+    check_out?: string;
+    adults?: number;
+    children?: number;
+    total_amount?: number;
+    paid_amount?: number;
+    status?: string;
+    notes?: string | null;
+    rating?: number | null;
+    review?: string | null;
+    customer_id?: string | null;
+  }) =>
+    z.object({
+      id: z.string().uuid(),
+      guest_name: z.string().min(1).optional(),
+      phone: z.string().nullable().optional(),
+      check_in: z.string().optional(),
+      check_out: z.string().optional(),
+      adults: z.number().int().nonnegative().optional(),
+      children: z.number().int().nonnegative().optional(),
+      total_amount: z.number().nonnegative().optional(),
+      paid_amount: z.number().nonnegative().optional(),
+      status: z.enum(["pending", "confirmed", "checkin", "checkout", "cancelled"]).optional(),
+      notes: z.string().nullable().optional(),
+      rating: z.number().int().min(1).max(5).nullable().optional(),
+      review: z.string().nullable().optional(),
+      customer_id: z.string().uuid().nullable().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { id, ...patch } = data;
+    const { error } = await context.supabase.from("reservations").update(patch).eq("id", id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const addCommunication = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { customer_id?: string | null; lead_id?: string | null; channel: string; direction?: string; subject?: string | null; body?: string | null }) =>
+    z.object({
+      customer_id: z.string().uuid().nullable().optional(),
+      lead_id: z.string().uuid().nullable().optional(),
+      channel: z.enum(["whatsapp", "email", "sms"]),
+      direction: z.enum(["outbound", "inbound"]).optional(),
+      subject: z.string().nullable().optional(),
+      body: z.string().nullable().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("communications").insert({ ...data, owner_id: context.userId });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // ---------- Dashboard ----------
 
 export const getDashboardData = createServerFn({ method: "GET" })

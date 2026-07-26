@@ -282,19 +282,17 @@ export const upsertCampaign = createServerFn({ method: "POST" })
       status: z.string().optional(),
     }).parse(d))
   .handler(async ({ data, context }) => {
-    const payload: Record<string, unknown> = {
+    const base = {
       name_he: data.name_he,
       template_id: data.template_id ?? null,
-      segment: data.segment ?? {},
+      segment: (data.segment ?? {}) as any,
       coupon_code: data.coupon_code ?? null,
       scheduled_at: data.scheduled_at ?? null,
+      ...(data.status ? { status: data.status as any } : {}),
     };
-    if (data.status) payload.status = data.status;
-    if (!data.id) payload.owner_id = context.userId;
-
     const q = data.id
-      ? context.supabase.from("campaigns").update(payload).eq("id", data.id).select().single()
-      : context.supabase.from("campaigns").insert(payload).select().single();
+      ? context.supabase.from("campaigns").update(base).eq("id", data.id).select().single()
+      : context.supabase.from("campaigns").insert({ ...base, owner_id: context.userId }).select().single();
     const { data: row, error } = await q;
     if (error) throw new Error(error.message);
     return row;
@@ -337,7 +335,7 @@ export const launchCampaign = createServerFn({ method: "POST" })
     const tpl = (campaign as any).wa_templates;
     if (tpl?.status !== "approved") throw new Error("Template not approved");
 
-    const list = await resolveSegmentToCustomers(context.supabase, campaign.segment ?? {});
+    const list = await resolveSegmentToCustomers(context.supabase, (campaign.segment ?? {}) as Record<string, unknown>);
     let queued = 0;
     for (const c of list) {
       const r = await insertMessageWithGuards(context.supabase, {

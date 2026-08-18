@@ -1,6 +1,29 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { FunctionsHttpError, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+const OVERLAP_ERROR_HE = "התאריכים תפוסים";
+
+// Units mapped to a Beds24 room must go through the beds24-push edge function so the
+// remote calendar is written before the local row (Beds24 is the source of truth).
+async function invokeBeds24Push(
+  supabase: SupabaseClient<Database>,
+  body: Record<string, unknown>,
+): Promise<{ ok: boolean; reservation_id: string }> {
+  const { data, error } = await supabase.functions.invoke("beds24-push", { body });
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const status = error.context.status;
+      const resBody = await error.context.json().catch(() => null);
+      if (status === 409 && resBody?.error === "overlap") throw new Error(OVERLAP_ERROR_HE);
+      throw new Error(resBody?.error ?? `beds24-push failed (${status})`);
+    }
+    throw new Error(error.message);
+  }
+  return data as { ok: boolean; reservation_id: string };
+}
 
 // ---------- Properties + Units ----------
 
@@ -142,12 +165,49 @@ export const createReservation = createServerFn({ method: "POST" })
         .parse(d),
   )
   .handler(async ({ data, context }) => {
+    const { data: unit, error: unitError } = await context.supabase
+      .from("units")
+      .select("beds24_room_id")
+      .eq("id", data.unit_id)
+      .single();
+    if (unitError) throw new Error(unitError.message);
+
+    if (unit.beds24_room_id) {
+      const isBlock = data.channel === "block";
+      const pushed = await invokeBeds24Push(context.supabase, {
+        action: isBlock ? "block" : "create",
+        unit_id: data.unit_id,
+        check_in: data.check_in,
+        check_out: data.check_out,
+        ...(isBlock
+          ? { title: data.guest_name }
+          : { guest: { name: data.guest_name, phone: data.phone }, channel: data.channel }),
+        notes: data.notes,
+      });
+      // Beds24 doesn't carry occupancy/amounts — patch them onto the local row.
+      const patch: { adults?: number; children?: number; total_amount?: number; paid_amount?: number } = {};
+      if (data.adults != null) patch.adults = data.adults;
+      if (data.children != null) patch.children = data.children;
+      if (data.total_amount != null) patch.total_amount = data.total_amount;
+      if (data.paid_amount != null) patch.paid_amount = data.paid_amount;
+      if (Object.keys(patch).length) {
+        await context.supabase.from("reservations").update(patch).eq("id", pushed.reservation_id);
+      }
+      const { data: row, error } = await context.supabase
+        .from("reservations")
+        .select()
+        .eq("id", pushed.reservation_id)
+        .single();
+      if (error) throw new Error(error.message);
+      return row;
+    }
+
     const { data: row, error } = await context.supabase
       .from("reservations")
       .insert({ ...data, owner_id: context.userId })
       .select()
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(error.code === "23P01" ? OVERLAP_ERROR_HE : error.message);
     return row;
   });
 
@@ -162,11 +222,24 @@ export const updateReservationStatus = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
+    if (data.status === "cancelled") {
+      const { data: row, error: readError } = await context.supabase
+        .from("reservations")
+        .select("beds24_booking_id")
+        .eq("id", data.id)
+        .single();
+      if (readError) throw new Error(readError.message);
+      if (row.beds24_booking_id) {
+        await invokeBeds24Push(context.supabase, { action: "cancel", reservation_id: data.id });
+        return { ok: true };
+      }
+    }
     const { error } = await context.supabase
       .from("reservations")
       .update({ status: data.status })
       .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    // Un-cancelling can re-trigger the overlap exclusion constraint.
+    if (error) throw new Error(error.code === "23P01" ? OVERLAP_ERROR_HE : error.message);
     return { ok: true };
   });
 

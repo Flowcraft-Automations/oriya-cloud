@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      beds24_token_cache: {
+        Row: {
+          access_token: string
+          expires_at: string
+          id: number
+        }
+        Insert: {
+          access_token: string
+          expires_at: string
+          id?: number
+        }
+        Update: {
+          access_token?: string
+          expires_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           coupon_code: string | null
@@ -230,6 +248,39 @@ export type Database = {
           phone?: string | null
           tags?: string[]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      integration_sync_log: {
+        Row: {
+          created_at: string
+          direction: string
+          error: string | null
+          event: string | null
+          id: number
+          payload: Json | null
+          provider: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          error?: string | null
+          event?: string | null
+          id?: never
+          payload?: Json | null
+          provider?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          error?: string | null
+          event?: string | null
+          id?: never
+          payload?: Json | null
+          provider?: string
+          status?: string
         }
         Relationships: []
       }
@@ -701,6 +752,8 @@ export type Database = {
       reservations: {
         Row: {
           adults: number
+          beds24_booking_id: number | null
+          beds24_status: string | null
           channel: Database["public"]["Enums"]["reservation_channel"]
           check_in: string
           check_out: string
@@ -710,6 +763,7 @@ export type Database = {
           customer_id: string | null
           guest_name: string
           id: string
+          last_synced_at: string | null
           nights: number | null
           notes: string | null
           owner_id: string
@@ -718,12 +772,15 @@ export type Database = {
           rating: number | null
           review: string | null
           status: Database["public"]["Enums"]["reservation_status"]
+          sync_source: string | null
           total_amount: number
           unit_id: string
           updated_at: string
         }
         Insert: {
           adults?: number
+          beds24_booking_id?: number | null
+          beds24_status?: string | null
           channel?: Database["public"]["Enums"]["reservation_channel"]
           check_in: string
           check_out: string
@@ -733,6 +790,7 @@ export type Database = {
           customer_id?: string | null
           guest_name: string
           id?: string
+          last_synced_at?: string | null
           nights?: number | null
           notes?: string | null
           owner_id: string
@@ -741,12 +799,15 @@ export type Database = {
           rating?: number | null
           review?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
+          sync_source?: string | null
           total_amount?: number
           unit_id: string
           updated_at?: string
         }
         Update: {
           adults?: number
+          beds24_booking_id?: number | null
+          beds24_status?: string | null
           channel?: Database["public"]["Enums"]["reservation_channel"]
           check_in?: string
           check_out?: string
@@ -756,6 +817,7 @@ export type Database = {
           customer_id?: string | null
           guest_name?: string
           id?: string
+          last_synced_at?: string | null
           nights?: number | null
           notes?: string | null
           owner_id?: string
@@ -764,6 +826,7 @@ export type Database = {
           rating?: number | null
           review?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
+          sync_source?: string | null
           total_amount?: number
           unit_id?: string
           updated_at?: string
@@ -788,6 +851,8 @@ export type Database = {
       units: {
         Row: {
           base_price: number
+          beds24_property_id: number | null
+          beds24_room_id: number | null
           capacity: number
           created_at: string
           id: string
@@ -799,6 +864,8 @@ export type Database = {
         }
         Insert: {
           base_price?: number
+          beds24_property_id?: number | null
+          beds24_room_id?: number | null
           capacity?: number
           created_at?: string
           id?: string
@@ -810,6 +877,8 @@ export type Database = {
         }
         Update: {
           base_price?: number
+          beds24_property_id?: number | null
+          beds24_room_id?: number | null
           capacity?: number
           created_at?: string
           id?: string
